@@ -1,0 +1,31 @@
+{
+  "name": "hana-ctc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hana Network — a cross-chain credit layer on Creditcoin (CC3 Testnet). Monorepo.",
+  "engines": {
+    "node": ">=20.11.0 <23.0.0"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "contracts:build": "pnpm --filter @hana/contracts build",
+    "contracts:test": "pnpm --filter @hana/contracts test",
+    "contracts:deploy:cc3": "pnpm --filter @hana/contracts deploy:cc3",
+    "contracts:deploy:importer:cc3": "pnpm --filter @hana/contracts deploy:importer:cc3",
+    "contracts:verify:cc3": "pnpm --filter @hana/contracts verify:cc3",
+    "contracts:smoke:cc3": "pnpm --filter @hana/contracts smoke:cc3",
+    "attestor:build": "pnpm --filter @hana/attestor build",
+    "attestor:test": "pnpm --filter @hana/attestor test",
+    "attestor:deploy:sepolia": "pnpm --filter @hana/attestor deploy:sepolia",
+    "attestor:seed:sepolia": "pnpm --filter @hana/attestor seed:sepolia",
+    "attestor:verify:sepolia": "pnpm --filter @hana/attestor verify:sepolia",
+    "worker:dev": "pnpm --filter @hana/worker dev",
+    "worker:start": "pnpm --filter @hana/worker start",
+    "checkout:dev": "pnpm --filter @hana/checkout dev",
+    "merchant:dev": "pnpm --filter @hana/merchant dev",
+    "store:dev": "pnpm --filter @hana/store dev",
+    "docs:dev": "pnpm --filter @hana/docs dev",
+    "sync:abis": "pnpm --filter @hana/contracts export:abis && pnpm --filter @hana/attestor export:abis",
+    "test": "pnpm -r --filter \"./hana-ctc-contracts\" --filter \"./hana-ctc-attestor\" test"
+  }
+}

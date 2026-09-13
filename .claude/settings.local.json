@@ -1,0 +1,10 @@
+{
+  "skillOverrides": {
+    "design-taste-frontend": "off",
+    "image-to-code": "off",
+    "playwright-cli": "off",
+    "redesign-existing-projects": "off",
+    "web-design-guidelines": "off",
+    "webgl-landing": "off"
+  }
+}

@@ -1,0 +1,246 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.23;
+
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ICreditRegistry} from "./interfaces/ICreditRegistry.sol";
+import {ILendingPool} from "./interfaces/ILendingPool.sol";
+import {ScoreModel} from "./libraries/ScoreModel.sol";
+
+/// @title CreditRegistry
+/// @notice The reusable, multi-dimensional credit primitive for Creditcoin.
+/// @dev Two write paths only: `recordNativeActivity` (onlyLoanManager) and
+///      `importAttestedHistory` (onlyImporterASC). Read `getCreditLimit` from anywhere.
+contract CreditRegistry is ICreditRegistry, Ownable {
+    // ---- wiring ------------------------------------------------------------
+    address public loanManager;
+    address public importerASC;
+    ILendingPool public lendingPool;
+
+    // ---- governable parameters ------------------------------------------------
+    uint256 public importWeightBps = 6_000; // imported history counts as 60% of native
+    ScoreModel.Weights public weights = ScoreModel.Weights({repaymentBps: 5_000, volumeBps: 2_500, tenureBps: 2_500});
+    ScoreModel.LimitCurve public limitCurve = ScoreModel.LimitCurve({floorScore: 500, maxLimit: 5_000 * 1e6});
+    uint256 public perAccountExposureCap = 10_000 * 1e6;
+
+    struct AssetConfig {
+        bool enabled;
+        uint256 maxLimit; // overrides limitCurve.maxLimit for this asset
+    }
+    mapping(address => AssetConfig) public assetConfigs;
+
+    // ---- state -----------------------------------------------------------
+    mapping(address => CreditProfile) private _profiles;
+    mapping(uint64 => mapping(address => uint64)) public importNonces; // chainKey => subject => nonce
+
+    // ---- events (governance) -------------------------------------------------
+    event WiringUpdated(address loanManager, address importerASC, address lendingPool);
+    event ParametersUpdated();
+    event AssetConfigUpdated(address indexed asset, bool enabled, uint256 maxLimit);
+
+    modifier onlyLoanManager() {
+        require(msg.sender == loanManager, "registry: not loan manager");
+        _;
+    }
+
+    modifier onlyImporterASC() {
+        require(msg.sender == importerASC, "registry: not importer");
+        _;
+    }
+
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
+    // =====================================================================
+    //                         WRITE PATH 1: native
+    // =====================================================================
+    function recordNativeActivity(RecordType kind, address user, uint256 amount) external onlyLoanManager {
+        _bootstrap(user);
+        CreditProfile storage p = _profiles[user];
+
+        if (kind == RecordType.LOAN_ORIGINATED) {
+            p.nativeCumulativeBorrowed += uint128(amount);
+            p.outstandingDebt += amount;
+        } else if (kind == RecordType.PAYMENT_ON_TIME) {
+            p.nativeOnTimePayments += 1;
+        } else if (kind == RecordType.PAYMENT_LATE) {
+            p.nativeLatePayments += 1;
+        } else if (kind == RecordType.DEBT_REPAID) {
+            p.outstandingDebt = amount >= p.outstandingDebt ? 0 : p.outstandingDebt - amount;
+        } else if (kind == RecordType.LOAN_COMPLETED) {
+            p.nativeLoansCompleted += 1;
+        } else if (kind == RecordType.LOAN_DEFAULTED) {
+            p.nativeDefaults += 1;
+            p.outstandingDebt = amount >= p.outstandingDebt ? 0 : p.outstandingDebt - amount;
+        }
+
+        _recompute(user);
+        emit NativeActivity(user, kind, amount);
+    }
+
+    // =====================================================================
+    //                     WRITE PATH 2: attested import
+    // =====================================================================
+    function importAttestedHistory(
+        address subject,
+        uint64 chainKey,
+        ImportedSnapshot calldata s
+    ) external onlyImporterASC {
+        require(s.snapshotNonce > importNonces[chainKey][subject], "registry: stale nonce");
+        importNonces[chainKey][subject] = s.snapshotNonce;
+
+        _bootstrap(subject);
+        CreditProfile storage p = _profiles[subject];
+        p.importedLoansCompleted = s.loansCompleted;
+        p.importedOnTimePayments = s.onTimePayments;
+        p.importedLatePayments = s.latePayments;
+        p.importedDefaults = s.defaults;
+        p.importedCumulativeBorrowed = s.cumulativeBorrowedWei;
+        p.importedFirstActivityTimestamp = s.firstActivityTimestamp;
+        p.hasImportedHistory = true;
+        p.lastImportNonce = s.snapshotNonce;
+
+        _recompute(subject);
+        emit HistoryImported(subject, chainKey, s.snapshotNonce);
+    }
+
+    // =====================================================================
+    //                              reads
+    // =====================================================================
+    function getProfile(address user) external view returns (CreditProfile memory) {
+        CreditProfile memory p = _profiles[user];
+        if (!p.bootstrapped) {
+            p.compositeScore = uint16(ScoreModel.SCORE_MIN);
+        }
+        return p;
+    }
+
+    function getCreditLimit(address user, address asset) public view returns (uint256) {
+        CreditProfile storage p = _profiles[user];
+        uint16 score = p.bootstrapped ? p.compositeScore : uint16(ScoreModel.SCORE_MIN);
+        AssetConfig memory cfg = assetConfigs[asset];
+        uint256 maxLimit = cfg.enabled ? cfg.maxLimit : limitCurve.maxLimit;
+        uint256 gross = ScoreModel.creditLimit(score, ScoreModel.LimitCurve(limitCurve.floorScore, maxLimit));
+        return gross > perAccountExposureCap ? perAccountExposureCap : gross;
+    }
+
+    function getAvailableCredit(address user, address asset) external view returns (uint256) {
+        uint256 gross = getCreditLimit(user, asset);
+        uint256 debt = _profiles[user].outstandingDebt;
+        return debt >= gross ? 0 : gross - debt;
+    }
+
+    function importNonceOf(uint64 chainKey, address subject) external view returns (uint64) {
+        return importNonces[chainKey][subject];
+    }
+
+    // =====================================================================
+    //                            internals
+    // =====================================================================
+    function _bootstrap(address user) internal {
+        CreditProfile storage p = _profiles[user];
+        if (p.bootstrapped) return;
+        p.bootstrapped = true;
+        p.firstActivityTimestamp = uint64(block.timestamp);
+        p.compositeScore = uint16(ScoreModel.SCORE_MIN);
+        emit Bootstrapped(user);
+    }
+
+    function _recompute(address user) internal {
+        CreditProfile storage p = _profiles[user];
+        if (!p.bootstrapped) return;
+
+        uint16 rep = ScoreModel.repaymentSubscore(
+            p.nativeOnTimePayments,
+            p.nativeLatePayments,
+            p.nativeDefaults,
+            p.importedOnTimePayments,
+            p.importedLatePayments,
+            p.importedDefaults,
+            importWeightBps
+        );
+        uint16 vol = ScoreModel.volumeSubscore(
+            uint256(p.nativeCumulativeBorrowed) * 1e12, // 6dp -> 1e18
+            uint256(p.importedCumulativeBorrowed), // already 1e18
+            importWeightBps
+        );
+        uint64 firstTs = _earliest(p.firstActivityTimestamp, p.importedFirstActivityTimestamp);
+        uint16 ten = ScoreModel.tenureSubscore(firstTs, uint64(block.timestamp), _lpBonus(user));
+
+        p.repaymentScore = rep;
+        p.volumeScore = vol;
+        p.tenureScore = ten;
+        p.compositeScore = ScoreModel.composite(rep, vol, ten, weights);
+        p.lastUpdated = uint64(block.timestamp);
+        emit ProfileUpdated(user, p.compositeScore, rep, vol, ten);
+    }
+
+    function _earliest(uint64 a, uint64 b) private pure returns (uint64) {
+        if (a == 0) return b;
+        if (b == 0) return a;
+        return a < b ? a : b;
+    }
+
+    /// @dev Pull-based liquidity-provision bonus. Never reverts scoring if the pool call fails.
+    ///      Assumes a 6-dp asset for the divisor (iUSDC on testnet).
+    function _lpBonus(address user) internal view returns (uint256) {
+        if (address(lendingPool) == address(0)) return 0;
+        try lendingPool.maxWithdraw(user) returns (uint256 assets) {
+            uint256 bonus = (assets * 200) / (20_000 * 1e6);
+            return bonus > 200 ? 200 : bonus;
+        } catch {
+            return 0;
+        }
+    }
+
+    // =====================================================================
+    //                            governance
+    // =====================================================================
+    function setWiring(address loanManager_, address importerASC_, address lendingPool_) external onlyOwner {
+        loanManager = loanManager_;
+        importerASC = importerASC_;
+        lendingPool = ILendingPool(lendingPool_);
+        emit WiringUpdated(loanManager_, importerASC_, lendingPool_);
+    }
+
+    function setLoanManager(address v) external onlyOwner {
+        loanManager = v;
+        emit WiringUpdated(loanManager, importerASC, address(lendingPool));
+    }
+
+    function setImporterASC(address v) external onlyOwner {
+        importerASC = v;
+        emit WiringUpdated(loanManager, importerASC, address(lendingPool));
+    }
+
+    function setLendingPool(address v) external onlyOwner {
+        lendingPool = ILendingPool(v);
+        emit WiringUpdated(loanManager, importerASC, address(lendingPool));
+    }
+
+    function setWeights(uint256 repaymentBps, uint256 volumeBps, uint256 tenureBps) external onlyOwner {
+        require(repaymentBps + volumeBps + tenureBps == 10_000, "weights: must sum to 10000");
+        weights = ScoreModel.Weights(repaymentBps, volumeBps, tenureBps);
+        emit ParametersUpdated();
+    }
+
+    function setImportWeightBps(uint256 v) external onlyOwner {
+        require(v < 10_000, "importWeight: must be < 10000"); // imported strictly below native
+        importWeightBps = v;
+        emit ParametersUpdated();
+    }
+
+    function setLimitCurve(uint256 floorScore, uint256 maxLimit) external onlyOwner {
+        require(floorScore >= 300 && floorScore < 850, "limitCurve: bad floor");
+        limitCurve = ScoreModel.LimitCurve(floorScore, maxLimit);
+        emit ParametersUpdated();
+    }
+
+    function setPerAccountExposureCap(uint256 v) external onlyOwner {
+        perAccountExposureCap = v;
+        emit ParametersUpdated();
+    }
+
+    function setAssetConfig(address asset, bool enabled, uint256 maxLimit) external onlyOwner {
+        assetConfigs[asset] = AssetConfig(enabled, maxLimit);
+        emit AssetConfigUpdated(asset, enabled, maxLimit);
+    }
+}

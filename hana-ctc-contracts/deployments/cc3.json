@@ -1,0 +1,63 @@
+{
+  "network": "cc3",
+  "chainId": 102031,
+  "contracts": {
+    "IUSDC": {
+      "address": "0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a",
+      "txHash": "0xb02b82af42b06f67c64dde5fede68cf0cf0da1aabc8014b4dc0e996e8b042e62",
+      "blockNumber": 5434541,
+      "args": [
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "CreditRegistry": {
+      "address": "0x856440a7dCF92371914C37E23724c85575541590",
+      "txHash": "0xa01d37e4206ca53d359d0ff41478306345d2b73bc172dac47278cb5e8dd34919",
+      "blockNumber": 5434542,
+      "args": [
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "LendingPool": {
+      "address": "0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43",
+      "txHash": "0xc88038eb702dacf17c82b6d417448726bdbb9da0db1db5a9fad6cc4a83eb7cf2",
+      "blockNumber": 5434543,
+      "args": [
+        "0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "SettlementVault": {
+      "address": "0xf817e4b94914b70C00e086F30d9924Fb60C7f271",
+      "txHash": "0x0e9fd892eb4f72ec76e3ca921ff35248ffeb20e528ea5f6679df5c0052eed365",
+      "blockNumber": 5434544,
+      "args": [
+        "0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "LoanManager": {
+      "address": "0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9",
+      "txHash": "0xbc94b669bd8b292e6391cd9decfbddb0fff2a8d63f500efd363394f02c4af9cc",
+      "blockNumber": 5434545,
+      "args": [
+        "0x856440a7dCF92371914C37E23724c85575541590",
+        "0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43",
+        "0xf817e4b94914b70C00e086F30d9924Fb60C7f271",
+        "0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "CreditImporterASC": {
+      "address": "0x32c784848B052dFe1a2480A4fdC3eAcad7781940",
+      "txHash": "0x783709257d50cbbf172c68258107b708491ee4c2c23dea16d1c48c1fb75e4cf0",
+      "blockNumber": 5434999,
+      "args": [
+        "0x0000000000000000000000000000000000000FD2",
+        "0x856440a7dCF92371914C37E23724c85575541590",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages:
+  - "hana-ctc-contracts"
+  - "hana-ctc-attestor"
+  - "hana-ctc-worker"
+  - "hana-ctc-checkout"
+  - "hana-ctc-merchant"
+  - "hana-ctc-store"
+  - "hana-ctc-docs"
+  - "packages/*"

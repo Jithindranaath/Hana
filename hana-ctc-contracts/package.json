@@ -1,0 +1,27 @@
+{
+  "name": "@hana/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hana core protocol contracts on Creditcoin CC3 Testnet.",
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "clean": "hardhat clean",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:cc3": "hardhat run scripts/deploy.ts --network cc3",
+    "deploy:importer:cc3": "hardhat run scripts/deploy-importer.ts --network cc3",
+    "verify:cc3": "hardhat run scripts/verify.ts --network cc3",
+    "export:abis": "hardhat run scripts/export-abis.ts",
+    "smoke:cc3": "hardhat run scripts/smoke.ts --network cc3"
+  },
+  "devDependencies": {
+    "@gluwa/asc-contracts": "0.2.1",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "5.1.0",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.22.17",
+    "typescript": "^5.7.2"
+  }
+}

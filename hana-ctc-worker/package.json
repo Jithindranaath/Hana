@@ -1,0 +1,26 @@
+{
+  "name": "@hana/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Off-chain orchestrator: CreditSnapshot on Sepolia -> attestation wait -> proof fetch -> CreditImporterASC.importFromQuery on CC3.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gluwa/usc-sdk": "0.18.0",
+    "@hana/shared": "workspace:*",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

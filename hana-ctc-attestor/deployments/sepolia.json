@@ -1,0 +1,14 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contracts": {
+    "HanaCreditAttestor": {
+      "address": "0x89D15677c532eccDf5c8eBff69e38DB13ce966C5",
+      "txHash": "0x4fa6defc7a0c7a3414ccb0a1369e78c4d65bf0e3e7e80a846241f862dde33ea5",
+      "blockNumber": 11639999,
+      "args": [
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    }
+  }
+}
