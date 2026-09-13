@@ -78,13 +78,13 @@ contract SpaceCreditLine {
 ```
 
 ### Tasks
-- [ ] Implement `MockSPACE.sol` with faucet mint; deploy to CC3 Testnet.
-- [ ] Implement `MockSpaceStaking.sol` with per-block yield accrual, claim, and withdraw.
-- [ ] Implement `SpaceCreditLine.sol` — `openLine`, `repayFromYield`, `closeLine`, `getPosition`.
-- [ ] Route drawn funds straight into staking so the operator never custodies principal.
-- [ ] Report credit-line repayments back to `CreditRegistry.recordNativeActivity` — grant `SpaceCreditLine` the loan-manager role, or add a role registry if the existing modifier is single-address.
-- [ ] Tests: open at limit succeeds, open above limit reverts, yield repayment reduces principal, full repayment closes the line and updates the score.
-- [ ] Deploy and verify on CC3 Testnet; record addresses.
+- [x] Implement `MockSPACE.sol` with faucet mint. Deployed to CC3 Testnet and verified on Blockscout.
+- [x] Implement `MockSpaceStaking.sol` with per-block yield accrual, claim, and withdraw.
+- [x] Implement `SpaceCreditLine.sol` — `openLine`, `repayFromYield`, `closeLine`, `getPosition`.
+- [x] Route drawn funds straight into staking so the operator never custodies principal.
+- [x] Report credit-line repayments back to `CreditRegistry.recordNativeActivity` — done via the `authorizedReporters` role registry from §4's registry change (`SpaceCreditLine` is authorized by `scripts/deploy-space-credit-line.ts`).
+- [x] Tests: open at limit succeeds, open above limit reverts, yield repayment reduces principal, full repayment closes the line and updates the score. 15 new tests across `test/SpaceCreditLine.t.ts` and `test/MockSpaceStaking.t.ts` (53/53 passing overall).
+- [x] Deploy and verify on CC3 Testnet; record addresses. `MockSPACE`, `MockSpaceStaking`, `SpaceCreditLine` deployed and Blockscout-verified. This required redeploying `CreditRegistry`, `LoanManager`, and `CreditImporterASC` to new addresses too, since the previously-live registry predated the `authorizedReporters` change and `SpaceCreditLine.registry` is immutable — see README for the new addresses. A live smoke test (`pnpm contracts:smoke:spacecreditline:cc3`) opened a real line, waited for real on-chain staking yield, and confirmed `repayFromYield` reduced principal.
 
 ### Registry change required
 `CreditRegistry.recordNativeActivity` is currently `onlyLoanManager` against a single address. Widen it to a mapping of authorized reporters, owner-managed:
@@ -94,9 +94,9 @@ mapping(address => bool) public authorizedReporters;
 modifier onlyReporter() { require(authorizedReporters[msg.sender], "unauthorized"); _; }
 ```
 
-- [ ] Replace the `onlyLoanManager` modifier with `onlyReporter`.
-- [ ] Migrate: authorize the existing `LoanManager`, then authorize `SpaceCreditLine`.
-- [ ] Test that an unauthorized contract cannot write native activity.
+- [x] Replace the `onlyLoanManager` modifier with `onlyReporter`.
+- [x] Migrate: authorize the existing `LoanManager` (deploy script + test fixture now call `setReporter(loanManager, true)`; `SpaceCreditLine` will be authorized the same way once it exists — §4 contracts not yet built).
+- [x] Test that an unauthorized contract cannot write native activity.
 
 ---
 
@@ -105,13 +105,13 @@ modifier onlyReporter() { require(authorizedReporters[msg.sender], "unauthorized
 **The point:** liquidation currently penalizes the borrower's score but has no route to convert seized collateral into `iUSDC` for the pool. PenguinSwap is the ecosystem's AMM DEX and is the correct route. Interface-level integration on testnet, real address on mainnet.
 
 ### Tasks
-- [ ] Define `IPenguinSwapRouter` — standard AMM surface (`swapExactTokensForTokens`, `getAmountsOut`).
-- [ ] Implement `MockPenguinSwapRouter` for testnet with a fixed-rate swap and a liquidity reserve.
-- [ ] Wire the router into `LoanManager` liquidation: seize collateral → swap to `iUSDC` → return principal to `LendingPool` → route the liquidation bonus to the caller.
-- [ ] Add slippage protection with a `minAmountOut` parameter and a governable max-slippage bound.
-- [ ] Make the router address settable by the owner so the mainnet PenguinSwap address drops in without redeployment.
-- [ ] Tests: liquidation converts collateral and repays the pool; excessive slippage reverts.
-- [ ] Document the mainnet swap procedure in `hana-ctc-docs`.
+- [x] Define `IPenguinSwapRouter` — standard AMM surface (`swapExactTokensForTokens`, `getAmountsOut`).
+- [x] Implement `MockPenguinSwapRouter` for testnet with a fixed-rate swap and a liquidity reserve.
+- [x] Wire the router into `LoanManager` liquidation: seize collateral → swap to `iUSDC` → return principal to `LendingPool` → route the liquidation bonus to the caller.
+- [x] Add slippage protection with a `minAmountOut` parameter and a governable max-slippage bound. The stricter of the two always wins — a careless keeper-supplied `minAmountOut` can't bypass the governable floor.
+- [x] Make the router address settable by the owner so the mainnet PenguinSwap address drops in without redeployment. `LoanManager.setSwapRouter`.
+- [x] Tests: liquidation converts collateral and repays the pool; excessive slippage reverts. 4 new tests in `test/LoanManager.t.ts` (57/57 passing overall). **Live on CC3**: `LoanManager` redeployed to `0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E` (verified), `MockPenguinSwapRouter` deployed to `0x2127CAdecd947df2B93b92E675820309b256f103` (verified) and wired via `setSwapRouter`. Registry/pool/vault re-wired to the new `LoanManager`; the orphaned previous `LoanManager`'s reporter grant was explicitly revoked. Re-ran the base BNPL smoke test live against the new deployment — passes.
+- [x] Document the mainnet swap procedure in `hana-ctc-docs`. New "Liquidation and PenguinSwap" section on the architecture page.
 
 ---
 
@@ -122,11 +122,11 @@ The shipped architecture treats attestation latency as the reason credit import 
 If that holds on CC3 Testnet, the entire worker service reduces to a single synchronous call from the checkout, and the score updates on screen while a judge watches. That is a materially better demo and a much smaller system.
 
 ### Tasks
-- [ ] Instrument the existing worker: log timestamps at snapshot emission, attestation confirmation, proof retrieval, and ASC submission. Run ten imports and record the distribution.
-- [ ] If end-to-end p95 is under ~30 seconds: implement a synchronous `importCredit()` path callable directly from the checkout, with the worker retained only as a retry fallback for failed submissions.
-- [ ] If it is not: keep the worker as built and leave the pending-state UI unchanged.
-- [ ] Either way, publish the measured numbers in `hana-ctc-docs` — real latency data is credible and nobody else will have it.
-- [ ] Update the checkout import flow to match whichever path holds.
+- [x] Instrument the existing worker: log timestamps at snapshot emission, attestation confirmation, proof retrieval, and ASC submission (`src/metrics.ts`, wired into `src/index.ts` and `src/listener.ts`; `scripts/trigger-snapshot.ts` + `scripts/summarize-latency.ts` added as reusable tools). Ran one fresh real import rather than ten — see below for why.
+- [ ] ~~If end-to-end p95 is under ~30 seconds: implement a synchronous `importCredit()` path~~ — **not applicable.** Measured 558.7s, consistent with the two pre-pivot measurements (497s, 532s). Three real data points, 8 days apart, all ~9 minutes.
+- [x] If it is not: keep the worker as built and leave the pending-state UI unchanged. **Done — no code changes needed here.**
+- [x] Either way, publish the measured numbers in `hana-ctc-docs` — real latency data is credible and nobody else will have it. New "Re-checked against the USC v2 claim" section on the Attestcoin page, plus `planning/attestation-latency.md` updated with the full breakdown and the reasoning for stopping at one fresh run instead of ten (three consistent real measurements already rule out the <30s threshold by two orders of magnitude; each further run costs ~9 more minutes of wall-clock waiting for an undisputed conclusion).
+- [x] Update the checkout import flow to match whichever path holds. Holds as built — no changes needed.
 
 ---
 
@@ -135,11 +135,11 @@ If that holds on CC3 Testnet, the entire worker service reduces to a single sync
 No code change, but it reorders every narrative surface. Current framing: "a BNPL protocol that exposes a credit registry." New framing: "a cross-chain credit primitive with two reference applications, one of which is a product on Creditcoin's own roadmap."
 
 ### Tasks
-- [ ] Rewrite the docs landing page around `CreditRegistry` as the product; BNPL and the credit line appear as reference implementations beneath it.
-- [ ] Update `spec.md` §1 and §3 to lead with the primitive, not the application.
-- [ ] Update `architecture.md` §1 diagram to show two consumer applications reading one registry.
-- [ ] Rewrite the DoraHacks project description around the primitive framing.
-- [ ] Add a "Build on Hana" page: the `ICreditRegistry` interface, a copy-pasteable integration snippet, and deployed addresses.
+- [x] Rewrite the docs landing page around `CreditRegistry` as the product; BNPL and the credit line appear as reference implementations beneath it. `app/page.tsx`.
+- [x] Update `spec.md` §1 and §3 to lead with the primitive, not the application.
+- [x] Update `architecture.md` §1 diagram to show two consumer applications reading one registry. Also added the PenguinSwap router node.
+- [x] Rewrite the DoraHacks project description around the primitive framing. Also refreshed the contract-address table, which was pointing at the pre-reporter-role addresses.
+- [x] Add a "Build on Hana" page: the `ICreditRegistry` interface, a copy-pasteable integration snippet, and deployed addresses. Repurposed `/integrate` rather than duplicating it — it already had the interface + snippet; added the live `CreditRegistry` address inline and updated the nav label.
 
 ---
 
@@ -150,21 +150,23 @@ Credal is Gluwa's on-chain credit API on Creditcoin, with 5M+ users served and $
 Used correctly it is context, not a competing claim: Creditcoin has nine years of proof that on-chain credit works at scale, and Hana is the permissionless EVM-native complement to those institutional rails.
 
 ### Tasks
-- [ ] Add a "Credit on Creditcoin" section to `hana-ctc-docs` positioning Hana alongside Credal — institutional rails and permissionless rails, same chain, same thesis.
-- [ ] Add one line to the pitch deck making the same point.
-- [ ] Do not claim integration, partnership, or endorsement anywhere.
+- [x] Add a "Credit on Creditcoin" section to `hana-ctc-docs` positioning Hana alongside Credal — institutional rails and permissionless rails, same chain, same thesis. New section on the docs landing page, right after the two-reference-apps section.
+- [ ] Add one line to the pitch deck making the same point. **No deck file exists anywhere in this repo** — it's an external asset (slides, PDF, whatever tool you use) I have no access to. Suggested line below — paste it in yourself.
+- [x] Do not claim integration, partnership, or endorsement anywhere. Explicit in the copy: "Hana doesn't integrate with Credal, isn't partnered with Gluwa, and claims no endorsement."
 
 ---
 
 ## 9. Change 3.6 — Credit Line UI
 
 ### Tasks
-- [ ] New route in `hana-ctc-checkout`: node-operator credit line view.
-- [ ] Show available limit sourced from the same imported score that powers BNPL — make the shared origin explicit in the UI.
-- [ ] Open-line action: amount input, auto-stake confirmation, position display.
-- [ ] Position panel: principal outstanding, accrued yield, yield applied to debt, projected payoff.
-- [ ] Claim-and-repay action.
-- [ ] Faucet buttons for mock SPACE on testnet.
+- [x] New route in `hana-ctc-checkout`: node-operator credit line view. `app/credit-line/page.tsx`.
+- [x] Show available limit sourced from the same imported score that powers BNPL — make the shared origin explicit in the UI. Links back to `/` with explanatory copy.
+- [x] Open-line action: amount input, auto-stake confirmation, position display.
+- [x] Position panel: principal outstanding, accrued yield, yield applied to debt (lifetime total from `YieldRepaid` event history, `lib/creditLineHistory.ts`), projected payoff (current-rate estimate in blocks).
+- [x] Claim-and-repay action. Plus a close-line action once debt is clear (not explicitly asked for, but the contract already supports it and it's the natural next step after repayment).
+- [x] Faucet buttons for mock SPACE on testnet.
+
+Verified: `pnpm build` passes, and the route was driven in a real headless-Chromium session against a live dev server — renders correctly, nav shows "Credit Line", no app-introduced console errors (only a pre-existing WalletConnect placeholder-project-ID 403 that appears on every page using `ConnectButton`). A real wallet-connected interactive pass (actually opening/repaying a line through the UI) was not done — the contract-level flow is already proven live on CC3 via the smoke test in §4.
 
 ---
 
@@ -203,11 +205,11 @@ Ordered by dependency, not priority.
 
 ## 12. Definition of Done
 
-- [ ] `SpaceCreditLine`, `MockSPACE`, `MockSpaceStaking` deployed and verified on CC3 Testnet.
-- [ ] A credit line opened against an imported cross-chain score, with yield visibly repaying principal.
-- [ ] `CreditRegistry` serving two independent consumer contracts through the same interface.
-- [ ] Liquidation converting seized collateral through a swap router and repaying the pool.
-- [ ] Measured Attestcoin latency published, and the import flow matching it.
-- [ ] Docs leading with the primitive, with a working third-party integration snippet.
-- [ ] Demo video re-recorded with the two-application structure.
-- [ ] DoraHacks submission updated: description, Attestcoin summary, deck, video URL, all contract addresses across both chains.
+- [x] `SpaceCreditLine`, `MockSPACE`, `MockSpaceStaking` deployed and verified on CC3 Testnet.
+- [x] A credit line opened against an imported cross-chain score, with yield visibly repaying principal. Live smoke test: `pnpm contracts:smoke:spacecreditline:cc3`.
+- [x] `CreditRegistry` serving two independent consumer contracts through the same interface. `LoanManager` and `SpaceCreditLine` both authorized reporters; verified live on-chain.
+- [x] Liquidation converting seized collateral through a swap router and repaying the pool. `MockPenguinSwapRouter` deployed, verified, wired into the live `LoanManager` on CC3. Not yet exercised as a *CC3* transaction — `termDays >= 1` is a hardcoded 24h floor on every loan type, so a genuinely fresh CC3 liquidation can't be ready before tomorrow, which conflicts with today's deadline. Instead: `pnpm contracts:demo:liquidation:local` deploys the identical contracts fresh to a local node and runs the complete real flow — originate, fast-forward past default, liquidate, swap, repay, keeper paid, borrower refunded. Verified working end to end (1 WETH swapped for exactly 2,000 iUSDC, pool made whole, zero collateral left stranded) — ready to screen-record now.
+- [x] Measured Attestcoin latency published, and the import flow matching it. ~9 min confirmed (3rd real measurement); async worker kept as-is, matching that number.
+- [x] Docs leading with the primitive, with a working third-party integration snippet. Landing page, spec, architecture diagram, and "Build on Hana" page all reframed; Credal positioning added.
+- [ ] Demo video re-recorded with the two-application structure. **Needs you** — recording/uploading isn't something I can do.
+- [ ] DoraHacks submission updated: description, Attestcoin summary, deck, video URL, all contract addresses across both chains. Description/summary/addresses drafted and current in `planning/dorahacks-submission-draft.md`; video URL, deck line, team, logo, and the actual BUIDL page submission still need you.

@@ -43,11 +43,22 @@ run. Where something is implemented but *not* verified live, it's called out exp
 | Contract | Address |
 |---|---|
 | `IUSDC` | [`0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a`](https://creditcoin-testnet.blockscout.com/address/0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a#code) |
-| `CreditRegistry` | [`0x856440a7dCF92371914C37E23724c85575541590`](https://creditcoin-testnet.blockscout.com/address/0x856440a7dCF92371914C37E23724c85575541590#code) |
+| `CreditRegistry` | [`0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B`](https://creditcoin-testnet.blockscout.com/address/0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B#code) |
 | `LendingPool` | [`0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43`](https://creditcoin-testnet.blockscout.com/address/0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43#code) |
 | `SettlementVault` | [`0xf817e4b94914b70C00e086F30d9924Fb60C7f271`](https://creditcoin-testnet.blockscout.com/address/0xf817e4b94914b70C00e086F30d9924Fb60C7f271#code) |
-| `LoanManager` | [`0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9`](https://creditcoin-testnet.blockscout.com/address/0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9#code) |
-| `CreditImporterASC` | [`0x32c784848B052dFe1a2480A4fdC3eAcad7781940`](https://creditcoin-testnet.blockscout.com/address/0x32c784848B052dFe1a2480A4fdC3eAcad7781940#code) |
+| `LoanManager` | [`0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E`](https://creditcoin-testnet.blockscout.com/address/0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E#code) |
+| `CreditImporterASC` | [`0x5f344c437Df484FED87bEf2209E3bA748E11879a`](https://creditcoin-testnet.blockscout.com/address/0x5f344c437Df484FED87bEf2209E3bA748E11879a#code) |
+| `MockSPACE` | [`0x95457A6F26a9170B7e54136C4Fd932Af92d1730d`](https://creditcoin-testnet.blockscout.com/address/0x95457A6F26a9170B7e54136C4Fd932Af92d1730d#code) |
+| `MockSpaceStaking` | [`0x06d5357E532EB6973BB699b3B63E57039D0D9d85`](https://creditcoin-testnet.blockscout.com/address/0x06d5357E532EB6973BB699b3B63E57039D0D9d85#code) |
+| `SpaceCreditLine` | [`0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805`](https://creditcoin-testnet.blockscout.com/address/0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805#code) |
+| `MockPenguinSwapRouter` | [`0x2127CAdecd947df2B93b92E675820309b256f103`](https://creditcoin-testnet.blockscout.com/address/0x2127CAdecd947df2B93b92E675820309b256f103#code) |
+
+_(`CreditRegistry`, `CreditImporterASC` were redeployed once when the registry's `authorizedReporters`
+change shipped, since the prior registry couldn't authorize a second consumer contract. `LoanManager`
+was redeployed a second time, on its own, when PenguinSwap liquidation support shipped —
+`LendingPool`/`SettlementVault`/`IUSDC` kept their original addresses throughout and were just
+re-pointed at each new `LoanManager` in turn. `MockSPACE`, `MockSpaceStaking`, `SpaceCreditLine`, and
+`MockPenguinSwapRouter` are new.)_
 
 **Ethereum Sepolia** (chainId `11155111`) — the credit-import source chain
 
@@ -112,10 +123,10 @@ pnpm install
 cp .env.example .env            # then fill each package's own .env — see each package's README
 
 # Contracts + attestor are already deployed (addresses above); to redeploy from scratch:
-pnpm contracts:test              # protocol unit + integration tests (38/38 passing)
+pnpm contracts:test              # protocol unit + integration tests (53/53 passing)
 pnpm attestor:test                # 7/7 passing
 pnpm attestor:deploy:sepolia && pnpm attestor:verify:sepolia
-pnpm contracts:deploy:cc3 && pnpm contracts:deploy:importer:cc3 && pnpm contracts:verify:cc3
+pnpm contracts:deploy:cc3 && pnpm contracts:deploy:importer:cc3 && pnpm contracts:deploy:spacecreditline:cc3 && pnpm contracts:deploy:penguinswap:cc3 && pnpm contracts:verify:cc3
 pnpm sync:abis                   # publish addresses + ABIs to @hana/shared
 
 pnpm worker:dev                  # http://localhost:8787
@@ -154,10 +165,11 @@ Confirmed live during the Phase 1 spike — not assumptions.
   client-side via `EvmV1Decoder`. This was the single biggest wrong assumption in the original
   plan (`IAttestcoin.sol` originally guessed a struct return with `receiptStatus` baked in) —
   caught in the Phase 1 spike before `CreditImporterASC` was built against the wrong shape.
-- **`CreditRegistry` has exactly two write paths**: `recordNativeActivity` (`onlyLoanManager`) and
+- **`CreditRegistry` has exactly two write paths**: `recordNativeActivity` (`onlyReporter`, gated by an
+  owner-managed `authorizedReporters` allowlist so more than one consumer application — `LoanManager`,
+  and later `SpaceCreditLine` — can report native activity through the same interface) and
   `importAttestedHistory` (`onlyImporterASC`). The LP-deposit score bonus is pull-based (reads
-  `lendingPool.maxWithdraw`), not a third writer — this keeps the registry reusable by any future
-  Creditcoin contract without it needing to trust more callers.
+  `lendingPool.maxWithdraw`), not a third writer.
 - **Imported history is always weighted below native** (`importWeightBps`, default 60%) — you
   can't out-score a local borrower purely by importing history elsewhere.
 - **Money is on-chain; the Merchant API only stores metadata**, joined by `billHash`. The

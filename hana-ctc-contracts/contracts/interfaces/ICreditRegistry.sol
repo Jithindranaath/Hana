@@ -4,7 +4,8 @@ pragma solidity ^0.8.23;
 /// @title ICreditRegistry
 /// @notice The public credit primitive. Any Creditcoin contract may read `getCreditLimit`.
 /// @dev There are exactly TWO write paths into the registry:
-///      - `recordNativeActivity`     (onlyLoanManager)  — loans originated on Creditcoin
+///      - `recordNativeActivity`     (onlyReporter)     — activity from any owner-authorized reporter
+///                                                          contract (e.g. `LoanManager`, `SpaceCreditLine`)
 ///      - `importAttestedHistory`    (onlyImporterASC)  — verified cross-chain snapshots
 ///      The liquidity-provision bonus is pull-based (score math reads the pool) and is NOT a third writer.
 interface ICreditRegistry {

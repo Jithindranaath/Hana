@@ -65,6 +65,9 @@ export class Listener {
         if (this.store.get(key)) continue; // already seen this run or a previous one
 
         const now = new Date().toISOString();
+        // The block's own timestamp is the true "snapshot emission" moment for latency purposes —
+        // not when this poll happened to notice it, which is skewed by the poll interval.
+        const block = await this.provider.getBlock(ev.blockNumber);
         const job: Job = {
           key,
           chainKey: this.chainKey,
@@ -76,6 +79,7 @@ export class Listener {
           state: "SEEN",
           createdAt: now,
           updatedAt: now,
+          emittedAt: block ? new Date(block.timestamp * 1000).toISOString() : now,
         };
         this.store.upsert(job);
         console.log(`[listener] new CreditSnapshot: subject=${subject} nonce=${job.snapshotNonce} block=${job.blockHeight}`);

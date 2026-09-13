@@ -60,6 +60,7 @@ export async function deployProtocol() {
     await importer.getAddress(),
     await pool.getAddress()
   );
+  await registry.setReporter(await loanManager.getAddress(), true);
   await pool.setLoanManager(await loanManager.getAddress());
   await vault.setLoanManager(await loanManager.getAddress());
   await importer.setAttestor(SOURCE_CHAIN_KEY, attestorEOA.address);
@@ -146,3 +147,38 @@ export async function importHistory(
 }
 
 export const daysAgo = async (d: number) => BigInt(await time.latest()) - BigInt(d) * 86400n;
+
+/** Reference app #2: SpaceCreditLine + its MockSPACE/MockSpaceStaking dependencies, wired and seeded. */
+export async function deploySpaceCreditLine() {
+  const base = await deployProtocol();
+  const { deployer, registry } = base;
+
+  const MockSPACE = await ethers.getContractFactory("MockSPACE");
+  const space = await MockSPACE.deploy(deployer.address);
+
+  const MockSpaceStaking = await ethers.getContractFactory("MockSpaceStaking");
+  const staking = await MockSpaceStaking.deploy(await space.getAddress(), deployer.address);
+
+  const SpaceCreditLine = await ethers.getContractFactory("SpaceCreditLine");
+  const creditLine = await SpaceCreditLine.deploy(
+    await registry.getAddress(),
+    await space.getAddress(),
+    await staking.getAddress(),
+    deployer.address
+  );
+
+  await staking.setOperator(await creditLine.getAddress());
+  await registry.setReporter(await creditLine.getAddress(), true);
+  // SPACE is 18dp; without its own exposure cap, the default 6dp-sized global cap (10,000 * 1e6)
+  // would clamp every SPACE limit to a near-zero raw-unit amount.
+  await registry.setAssetConfig(await space.getAddress(), true, U18(5_000), U18(10_000));
+
+  // Seed the credit-line's own reserve (what it stakes on a draw) and the staking yield reserve,
+  // mirroring how `deployProtocol` seeds `LendingPool` with iUSDC.
+  await space.mint(await creditLine.getAddress(), U18(1_000_000));
+  await space.mint(deployer.address, U18(1_000_000));
+  await space.approve(await staking.getAddress(), U18(1_000_000));
+  await staking.fundReserve(U18(1_000_000));
+
+  return { ...base, space, staking, creditLine };
+}

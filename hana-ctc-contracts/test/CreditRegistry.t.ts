@@ -11,11 +11,40 @@ describe("CreditRegistry", () => {
     expect(await registry.getCreditLimit(borrower.address, await iusdc.getAddress())).to.equal(0);
   });
 
-  it("rejects recordNativeActivity from anyone but the wired LoanManager", async () => {
+  it("rejects recordNativeActivity from anyone not an authorized reporter", async () => {
     const { registry, outsider, borrower } = await loadFixture(deployProtocol);
     await expect(
       registry.connect(outsider).recordNativeActivity(0, borrower.address, USDC(100))
-    ).to.be.revertedWith("registry: not loan manager");
+    ).to.be.revertedWith("registry: not authorized reporter");
+  });
+
+  it("lets the owner authorize a second reporter, which can then write, independent of the first", async () => {
+    const { registry, outsider, borrower } = await loadFixture(deployProtocol);
+
+    // Not yet authorized: still rejected.
+    await expect(
+      registry.connect(outsider).recordNativeActivity(0, borrower.address, USDC(100))
+    ).to.be.revertedWith("registry: not authorized reporter");
+
+    await expect(registry.setReporter(outsider.address, true))
+      .to.emit(registry, "ReporterUpdated")
+      .withArgs(outsider.address, true);
+    expect(await registry.authorizedReporters(outsider.address)).to.equal(true);
+
+    // Now authorized: succeeds and is independently revocable without touching the original reporter.
+    await expect(registry.connect(outsider).recordNativeActivity(1, borrower.address, 0)).to.not.be.reverted;
+
+    await registry.setReporter(outsider.address, false);
+    await expect(
+      registry.connect(outsider).recordNativeActivity(1, borrower.address, 0)
+    ).to.be.revertedWith("registry: not authorized reporter");
+  });
+
+  it("setReporter is owner-gated", async () => {
+    const { registry, outsider } = await loadFixture(deployProtocol);
+    await expect(
+      registry.connect(outsider).setReporter(outsider.address, true)
+    ).to.be.revertedWithCustomError(registry, "OwnableUnauthorizedAccount");
   });
 
   it("rejects importAttestedHistory from anyone but the wired ImporterASC", async () => {

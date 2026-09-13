@@ -87,6 +87,10 @@ async function main() {
     await (await (registry as any).setWiring(lmAddr, currentImporter, poolAddr)).wait();
     console.log("  registry.setWiring(loanManager, importerASC[unchanged], pool)");
   }
+  if (!(await (registry as any).authorizedReporters(lmAddr))) {
+    await (await (registry as any).setReporter(lmAddr, true)).wait();
+    console.log("  registry.setReporter(loanManager, true)");
+  }
   if ((await (pool as any).loanManager()) !== lmAddr) {
     await (await (pool as any).setLoanManager(lmAddr)).wait();
     console.log("  pool.setLoanManager(loanManager)");

@@ -2,7 +2,12 @@
 
 ## 1. High-Level Architecture
 
-Hana spans four layers: the **Source Chain**, the **Attestation Layer**, the **Creditcoin Protocol**, and the **Client Interfaces**.
+Hana spans four layers: the **Source Chain**, the **Attestation Layer**, the **Creditcoin Protocol**,
+and the **Client Interfaces**. `CreditRegistry` sits at the center of the Creditcoin Protocol layer
+as a shared primitive — the diagram below deliberately shows **two independent consumer
+applications** (`LoanManager` for BNPL, `SpaceCreditLine` for the DePIN credit line) both reading
+and writing it through the exact same two-function surface, with zero edges between the two
+applications themselves.
 
 ```mermaid
 graph TD
@@ -17,18 +22,28 @@ graph TD
         MA[Merchant API - Next.js]
     end
 
-    subgraph "Creditcoin CC3 Testnet"
+    subgraph "Creditcoin CC3 Testnet — the primitive"
         ASC[CreditImporterASC]
         PC[Precompile 0x0FD2]
         CR[CreditRegistry]
+    end
+
+    subgraph "Reference app #1 — BNPL"
         LP[LendingPool]
         LM[LoanManager]
         SV[SettlementVault]
+        PSR[PenguinSwap router]
+    end
+
+    subgraph "Reference app #2 — SpaceCreditLine"
+        SCL[SpaceCreditLine]
+        STK[MockSpaceStaking]
+        SPC[MockSPACE]
     end
 
     subgraph "Client Interfaces"
         SA[Demo Store]
-        CH[Checkout Hub]
+        CH[Checkout Hub — BNPL + credit-line routes]
         MP[Merchant Portal]
     end
 
@@ -48,7 +63,19 @@ graph TD
     LM -- "13. Borrow assets" --> LP
     LM -- "14. Settle merchant" --> SV
     LM -- "15. Record native activity" --> CR
+    LM -. "liquidation: swap collateral" .-> PSR
+
+    CH -- "16. Open / draw credit line" --> SCL
+    SCL -- "17. Read credit limit" --> CR
+    SCL -- "18. Auto-stake on operator's behalf" --> STK
+    STK -. "yield" .-> SPC
+    SCL -- "19. Record native activity" --> CR
 ```
+
+Steps 11/17 and 15/19 are the same two `ICreditRegistry` calls (`getCreditLimit`,
+`recordNativeActivity`) made by two unrelated contracts — `CreditRegistry.authorizedReporters`
+governs who may call the write path, and both `LoanManager` and `SpaceCreditLine` are authorized
+independently of each other.
 
 ---
 

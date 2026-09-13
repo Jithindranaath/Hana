@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "summarize-latency": "tsx scripts/summarize-latency.ts",
+    "trigger-snapshot": "tsx scripts/trigger-snapshot.ts"
   },
   "dependencies": {
     "@gluwa/usc-sdk": "0.18.0",

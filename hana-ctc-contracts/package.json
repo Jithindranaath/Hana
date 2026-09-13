@@ -12,9 +12,14 @@
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:cc3": "hardhat run scripts/deploy.ts --network cc3",
     "deploy:importer:cc3": "hardhat run scripts/deploy-importer.ts --network cc3",
+    "deploy:spacecreditline:cc3": "hardhat run scripts/deploy-space-credit-line.ts --network cc3",
+    "deploy:penguinswap:cc3": "hardhat run scripts/deploy-penguinswap.ts --network cc3",
+    "revoke-reporter:cc3": "hardhat run scripts/revoke-reporter.ts --network cc3",
     "verify:cc3": "hardhat run scripts/verify.ts --network cc3",
     "export:abis": "hardhat run scripts/export-abis.ts",
-    "smoke:cc3": "hardhat run scripts/smoke.ts --network cc3"
+    "smoke:cc3": "hardhat run scripts/smoke.ts --network cc3",
+    "smoke:spacecreditline:cc3": "hardhat run scripts/smoke-space-credit-line.ts --network cc3",
+    "demo:liquidation:local": "hardhat run scripts/demo-liquidation-local.ts --network localhost"
   },
   "devDependencies": {
     "@gluwa/asc-contracts": "0.2.1",

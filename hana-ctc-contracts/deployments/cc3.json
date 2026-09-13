@@ -10,14 +10,6 @@
         "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
       ]
     },
-    "CreditRegistry": {
-      "address": "0x856440a7dCF92371914C37E23724c85575541590",
-      "txHash": "0xa01d37e4206ca53d359d0ff41478306345d2b73bc172dac47278cb5e8dd34919",
-      "blockNumber": 5434542,
-      "args": [
-        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
-      ]
-    },
     "LendingPool": {
       "address": "0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43",
       "txHash": "0xc88038eb702dacf17c82b6d417448726bdbb9da0db1db5a9fad6cc4a83eb7cf2",
@@ -37,25 +29,69 @@
         "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
       ]
     },
-    "LoanManager": {
-      "address": "0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9",
-      "txHash": "0xbc94b669bd8b292e6391cd9decfbddb0fff2a8d63f500efd363394f02c4af9cc",
-      "blockNumber": 5434545,
+    "MockSPACE": {
+      "address": "0x95457A6F26a9170B7e54136C4Fd932Af92d1730d",
+      "txHash": "0x4a7a409b99707f57564434d58cf20e809b4a822eb1394c1603aa3eab674ddb65",
+      "blockNumber": 5479835,
       "args": [
-        "0x856440a7dCF92371914C37E23724c85575541590",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "MockSpaceStaking": {
+      "address": "0x06d5357E532EB6973BB699b3B63E57039D0D9d85",
+      "txHash": "0x7a60d9df8418d0c044134ca6b33efa45ebf8c456407ce400080cc88a308b3a2c",
+      "blockNumber": 5479836,
+      "args": [
+        "0x95457A6F26a9170B7e54136C4Fd932Af92d1730d",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "CreditRegistry": {
+      "address": "0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B",
+      "txHash": "0xd3d86f5c7e3e332c2da101964e89c0e120f36d8afbdb7cdb2fdab2b24458b806",
+      "blockNumber": 5479851,
+      "args": [
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "CreditImporterASC": {
+      "address": "0x5f344c437Df484FED87bEf2209E3bA748E11879a",
+      "txHash": "0x5691f7754783d99b7224876a2cbdb6444eded8d67e43487f202b8d003d049552",
+      "blockNumber": 5479858,
+      "args": [
+        "0x0000000000000000000000000000000000000FD2",
+        "0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "SpaceCreditLine": {
+      "address": "0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805",
+      "txHash": "0xd37fe37efe9e9e979af9001244648c9edebdb2634322c9f92c7e96975bfed583",
+      "blockNumber": 5479862,
+      "args": [
+        "0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B",
+        "0x95457A6F26a9170B7e54136C4Fd932Af92d1730d",
+        "0x06d5357E532EB6973BB699b3B63E57039D0D9d85",
+        "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
+      ]
+    },
+    "LoanManager": {
+      "address": "0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E",
+      "txHash": "0x498a30997cedd08d4439f4d8ef315ee9ad0c10e17cf07d97a6e73e730e4f6d9e",
+      "blockNumber": 5480273,
+      "args": [
+        "0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B",
         "0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43",
         "0xf817e4b94914b70C00e086F30d9924Fb60C7f271",
         "0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a",
         "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
       ]
     },
-    "CreditImporterASC": {
-      "address": "0x32c784848B052dFe1a2480A4fdC3eAcad7781940",
-      "txHash": "0x783709257d50cbbf172c68258107b708491ee4c2c23dea16d1c48c1fb75e4cf0",
-      "blockNumber": 5434999,
+    "MockPenguinSwapRouter": {
+      "address": "0x2127CAdecd947df2B93b92E675820309b256f103",
+      "txHash": "0x2968247c4938552a4101196532e451d0cbd7307bf3772f427d3b3a104735bcbf",
+      "blockNumber": 5480281,
       "args": [
-        "0x0000000000000000000000000000000000000FD2",
-        "0x856440a7dCF92371914C37E23724c85575541590",
         "0xccEF39b7e2081b9c814DBbf0e51D450DdaBB64a2"
       ]
     }

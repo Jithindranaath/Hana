@@ -15,6 +15,11 @@ export const LendingPool = require_((cc3Contracts as any).LendingPool, "LendingP
 export const IUSDC = require_((cc3Contracts as any).IUSDC, "IUSDC");
 export const SettlementVault = require_((cc3Contracts as any).SettlementVault, "SettlementVault");
 
+// Reference app #2 — the DePIN credit line.
+export const MockSPACE = require_((cc3Contracts as any).MockSPACE, "MockSPACE");
+export const MockSpaceStaking = require_((cc3Contracts as any).MockSpaceStaking, "MockSpaceStaking");
+export const SpaceCreditLine = require_((cc3Contracts as any).SpaceCreditLine, "SpaceCreditLine");
+
 // Sepolia — only used by the "link your history" onboarding step (WORKFLOW.md 7.3).
 export const HanaCreditAttestor = require_(
   (sepoliaContracts as any).HanaCreditAttestor,

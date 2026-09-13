@@ -1,26 +1,43 @@
 # @hana/contracts
 
 Core protocol on Creditcoin CC3 Testnet: `iUSDC`, `CreditRegistry`, `LendingPool`, `SettlementVault`,
-`LoanManager`, `CreditImporterASC`. Solidity `^0.8.23` (compiled with `0.8.24`), Hardhat, OpenZeppelin `5.1.0`.
+`LoanManager`, `CreditImporterASC` — plus reference app #2, `SpaceCreditLine` (with its `MockSPACE` /
+`MockSpaceStaking` dependencies). Solidity `^0.8.23` (compiled with `0.8.24`), Hardhat, OpenZeppelin `5.1.0`.
 
-Status: **logic complete, 38/38 tests passing, full system (including the importer) deployed +
-verified + wired on CC3.** `IAttestcoin` is confirmed against the real Attestcoin precompile
-(Phase 1 spike, see `planning/attestation-latency.md`) — no longer a guess.
+Status: **logic complete, 53/53 tests passing, full system (including the importer and
+`SpaceCreditLine`) deployed + verified + wired on CC3.** `IAttestcoin` is confirmed against the real
+Attestcoin precompile (Phase 1 spike, see `planning/attestation-latency.md`) — no longer a guess.
 
 | Contract | CC3 address |
 |---|---|
 | `IUSDC` | [`0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a`](https://creditcoin-testnet.blockscout.com/address/0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a#code) |
-| `CreditRegistry` | [`0x856440a7dCF92371914C37E23724c85575541590`](https://creditcoin-testnet.blockscout.com/address/0x856440a7dCF92371914C37E23724c85575541590#code) |
+| `CreditRegistry` | [`0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B`](https://creditcoin-testnet.blockscout.com/address/0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B#code) |
 | `LendingPool` | [`0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43`](https://creditcoin-testnet.blockscout.com/address/0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43#code) |
 | `SettlementVault` | [`0xf817e4b94914b70C00e086F30d9924Fb60C7f271`](https://creditcoin-testnet.blockscout.com/address/0xf817e4b94914b70C00e086F30d9924Fb60C7f271#code) |
-| `LoanManager` | [`0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9`](https://creditcoin-testnet.blockscout.com/address/0x3D34eD7926a1cE457DaE97dA8f00F6302b0332b9#code) |
-| `CreditImporterASC` | [`0x32c784848B052dFe1a2480A4fdC3eAcad7781940`](https://creditcoin-testnet.blockscout.com/address/0x32c784848B052dFe1a2480A4fdC3eAcad7781940#code) |
+| `LoanManager` | [`0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E`](https://creditcoin-testnet.blockscout.com/address/0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E#code) |
+| `CreditImporterASC` | [`0x5f344c437Df484FED87bEf2209E3bA748E11879a`](https://creditcoin-testnet.blockscout.com/address/0x5f344c437Df484FED87bEf2209E3bA748E11879a#code) |
+| `MockSPACE` | [`0x95457A6F26a9170B7e54136C4Fd932Af92d1730d`](https://creditcoin-testnet.blockscout.com/address/0x95457A6F26a9170B7e54136C4Fd932Af92d1730d#code) |
+| `MockSpaceStaking` | [`0x06d5357E532EB6973BB699b3B63E57039D0D9d85`](https://creditcoin-testnet.blockscout.com/address/0x06d5357E532EB6973BB699b3B63E57039D0D9d85#code) |
+| `SpaceCreditLine` | [`0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805`](https://creditcoin-testnet.blockscout.com/address/0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805#code) |
+| `MockPenguinSwapRouter` | [`0x2127CAdecd947df2B93b92E675820309b256f103`](https://creditcoin-testnet.blockscout.com/address/0x2127CAdecd947df2B93b92E675820309b256f103#code) |
 
-All verified. Pool seeded with 50,000 iUSDC from the deployer. `registry.importerASC()` and
-`importer.attestorOf(1)` confirmed live to point at `CreditImporterASC` and `HanaCreditAttestor`
-(Sepolia) respectively — a real cross-chain import can be submitted against this deployment today.
-Scripted smoke test (`pnpm smoke:cc3`: faucet → deposit → originate an `OVERCOLLATERALIZED` loan →
-repay) passes against this live deployment.
+All verified. `CreditRegistry`/`CreditImporterASC` were redeployed once when the registry's
+`authorizedReporters` change shipped, since the previous registry had no way to authorize a second
+consumer contract. `LoanManager` was redeployed a second time, on its own, when PenguinSwap
+liquidation support shipped — `LendingPool`/`SettlementVault`/`IUSDC` kept their original addresses
+throughout and were just re-pointed at each new `LoanManager` (`pool.setLoanManager` /
+`vault.setLoanManager`) in turn; the prior `LoanManager`'s registry reporter grant was explicitly
+revoked (`pnpm revoke-reporter:cc3`) rather than left dangling. Pool still seeded with 50,000 iUSDC
+from the deployer. `registry.importerASC()` and `importer.attestorOf(1)` confirmed live to point at
+`CreditImporterASC` and `HanaCreditAttestor` (Sepolia) respectively — a real cross-chain import can
+be submitted against this deployment today (any history imported against a *previous* registry no
+longer applies to the live contract and would need re-importing).
+
+Scripted smoke tests pass against this live deployment:
+- `pnpm smoke:cc3` — faucet → deposit → originate an `OVERCOLLATERALIZED` loan → repay. Re-run
+  against the redeployed `LoanManager` — passes.
+- `pnpm smoke:spacecreditline:cc3` — faucet → openLine → wait for real on-chain staking yield →
+  repayFromYield, confirmed reducing principal on live CC3 blocks.
 
 ## Contracts
 
@@ -32,17 +49,21 @@ repay) passes against this live deployment.
 | `SettlementVault.sol` | Merchant settlement escrow — immediate / time-locked / conditional release |
 | `LoanManager.sol` | Origination, servicing, completion and liquidation for all four loan types |
 | `CreditImporterASC.sol` | Verifies an Attestcoin `CreditSnapshot` via the `0x0FD2` precompile and imports it |
+| `tokens/MockSPACE.sol` | Reference app #2 — 18-dp mock $SPACE, rate-limited public faucet |
+| `mocks/MockSpaceStaking.sol` | Reference app #2 — SpaceRouter staking stand-in, linear per-block yield |
+| `SpaceCreditLine.sol` | Reference app #2 — draws against `getCreditLimit`, auto-stakes, repays from yield |
 | `libraries/ScoreModel.sol` | Pure scoring math (sub-scores, composite, limit curve) |
 | `libraries/RateModel.sol` | Pure kinked utilization → borrow-rate curve |
 | `interfaces/*` | The cross-contract surface, including `IAttestcoin` (confirmed live against the real precompile) |
-| `mocks/*` | `MockAttestcoin` (configurable verify/txIndex responses for the importer's negative tests), `MockERC20` |
+| `mocks/*` | `MockAttestcoin` (configurable verify/txIndex responses for the importer's negative tests), `MockERC20`, `MockSpaceStaking`, `MockPenguinSwapRouter` |
 
 ## Commands
 
 ```bash
 pnpm install --ignore-workspace   # or from the repo root once every package has deps: pnpm install
 pnpm build                        # hardhat compile
-pnpm test                         # 38 tests: registry, pool, vault, loan lifecycle x4 types, importer x4 checks + 1
+pnpm test                         # 57 tests: registry, pool, vault, loan lifecycle x4 types, importer x4 checks,
+                                   # SpaceCreditLine + MockSpaceStaking, PenguinSwap liquidation
 pnpm coverage                     # istanbul coverage report
 
 pnpm node                         # local Hardhat node (separate terminal)
@@ -51,8 +72,13 @@ pnpm run scripts/deploy-importer.ts --network localhost   # deploy + wire the im
 
 pnpm deploy:cc3                   # deploy core system to CC3 (needs CC3_DEPLOYER_PRIVATE_KEY funded)
 pnpm deploy:importer:cc3          # deploy + wire CreditImporterASC on CC3
+pnpm deploy:spacecreditline:cc3   # deploy + wire MockSPACE/MockSpaceStaking/SpaceCreditLine on CC3
+pnpm deploy:penguinswap:cc3       # deploy MockPenguinSwapRouter + wire loanManager.setSwapRouter on CC3
+pnpm revoke-reporter:cc3          # REVOKE_ADDRESS=0x... — revoke a stale registry reporter grant (e.g. an old LoanManager)
 pnpm verify:cc3                   # verify every recorded contract on the CC3 explorer
 pnpm export:abis                  # publish addresses + ABIs to packages/shared/src/generated/<network>.ts
+pnpm smoke:cc3                    # faucet -> deposit -> originate OVERCOLLATERALIZED -> repay, live on CC3
+pnpm smoke:spacecreditline:cc3    # faucet -> openLine -> wait for real yield -> repayFromYield, live on CC3
 ```
 
 ## Environment
@@ -73,8 +99,10 @@ workarounds. The tests already passed by the time it happens.
 
 ## Design notes worth knowing before you touch this code
 
-- **Two write paths into `CreditRegistry`, period.** `recordNativeActivity` (`onlyLoanManager`) and
-  `importAttestedHistory` (`onlyImporterASC`). The LP-deposit score bonus is **pull-based** — the
+- **Two write paths into `CreditRegistry`, period.** `recordNativeActivity` (`onlyReporter`, gated by
+  the owner-managed `authorizedReporters` mapping — `LoanManager` is authorized by default via the
+  deploy script, and any other consumer application, e.g. `SpaceCreditLine`, is authorized the same way)
+  and `importAttestedHistory` (`onlyImporterASC`). The LP-deposit score bonus is **pull-based** — the
   registry calls `lendingPool.maxWithdraw(user)` at score-recompute time — specifically so it isn't a
   third writer. See `CreditRegistry._lpBonus`.
 - **Imported history is always weighted below native** via `importWeightBps` (default 6000 / 60%),

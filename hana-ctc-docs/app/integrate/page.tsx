@@ -1,14 +1,32 @@
 import Link from "next/link";
+import { contracts as cc3Contracts } from "@hana/shared/src/generated/cc3";
 import { Prose } from "@/components/Prose";
 
 export default function IntegratePage() {
+  const registryAddress = (cc3Contracts as any).CreditRegistry?.address as string | undefined;
+
   return (
     <Prose>
-      <h1>Integrate</h1>
+      <h1>Build on Hana</h1>
       <p>
         <code>CreditRegistry</code> is a public primitive. Any Creditcoin contract can read a
-        wallet&apos;s credit limit — no partnership, no permission, no oracle subscription.
+        wallet&apos;s credit limit — no partnership, no permission, no oracle subscription. Two
+        reference applications (a BNPL checkout and a DePIN node-operator credit line) already
+        read it through exactly this interface; a third contract is the same three lines of code.
       </p>
+
+      {registryAddress && (
+        <p>
+          <strong>CreditRegistry on CC3 Testnet:</strong>{" "}
+          <a
+            href={`https://creditcoin-testnet.blockscout.com/address/${registryAddress}#code`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <code>{registryAddress}</code>
+          </a>
+        </p>
+      )}
 
       <h2>The one-liner</h2>
       <pre>
@@ -22,8 +40,8 @@ uint256 limit = ICreditRegistry(CREDIT_REGISTRY_ADDRESS).getCreditLimit(borrower
 // the borrower's outstanding debt — it's what's actually available to lend against right now.`}</code>
       </pre>
       <p>
-        See <Link href="/addresses">Addresses</Link> for the current <code>CreditRegistry</code>{" "}
-        address on CC3.
+        See <Link href="/addresses">Addresses</Link> for every deployed contract on both chains,
+        including the two reference applications above.
       </p>
 
       <h2>The full interface</h2>
@@ -68,11 +86,14 @@ uint256 limit = ICreditRegistry(CREDIT_REGISTRY_ADDRESS).getCreditLimit(borrower
       <h2>What you're trusting</h2>
       <p>
         Nothing beyond the Creditcoin state itself. <code>getCreditLimit</code> is a plain{" "}
-        <code>view</code> call against on-chain state that was written by exactly two callers:{" "}
-        <code>LoanManager</code> (native activity) and <code>CreditImporterASC</code> (verified
-        cross-chain imports, gated by the four checks in the{" "}
-        <Link href="/attestcoin">Attestcoin write-up</Link>). There is no oracle feed to trust and
-        no off-chain committee that could censor or forge an update.
+        <code>view</code> call against on-chain state written by two kinds of caller:{" "}
+        <code>CreditImporterASC</code> (verified cross-chain imports, gated by the four checks in
+        the <Link href="/attestcoin">Attestcoin write-up</Link>) and an owner-managed allowlist of{" "}
+        <code>authorizedReporters</code> — currently <code>LoanManager</code> and{" "}
+        <code>SpaceCreditLine</code>, with room for more. Any number of consumer applications can
+        report native activity through that same allowlist without touching each other&apos;s
+        code; there is no oracle feed to trust and no off-chain committee that could censor or
+        forge an update.
       </p>
 
       <h2>What you're not getting</h2>

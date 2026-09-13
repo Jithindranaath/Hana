@@ -17,6 +17,20 @@ export interface Job {
   error?: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Latency checkpoints (pivot §6 instrumentation) — all ISO timestamps, all optional since a
+   * resumed-from-a-crash job may be missing the earlier ones.
+   *   emittedAt          — the Sepolia block's own timestamp (not when the listener noticed it)
+   *   attestWaitStartedAt — when this job entered ATTEST_WAIT
+   *   attestConfirmedAt  — when waitUntilHeightAttested resolved
+   *   proofFetchedAt     — when getProof resolved
+   *   confirmedAt        — when the CC3 submission was mined
+   */
+  emittedAt?: string;
+  attestWaitStartedAt?: string;
+  attestConfirmedAt?: string;
+  proofFetchedAt?: string;
+  confirmedAt?: string;
 }
 
 /**

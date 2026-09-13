@@ -16,6 +16,10 @@ const CONTRACT_NAMES = [
   "SettlementVault",
   "LoanManager",
   "CreditImporterASC",
+  "MockSPACE",
+  "MockSpaceStaking",
+  "SpaceCreditLine",
+  "MockPenguinSwapRouter",
 ] as const;
 
 const deploymentsDir = path.join(__dirname, "..", "deployments");

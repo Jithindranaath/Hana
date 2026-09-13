@@ -9,6 +9,7 @@ import { fetchProof } from "./prove";
 import { submitImport } from "./submit";
 import { createServer } from "./server";
 import { withRetry } from "./retry";
+import { recordLatency } from "./metrics";
 
 async function main() {
   const sepoliaProvider = new ethers.JsonRpcProvider(config.sepoliaRpcUrl);
@@ -34,27 +35,34 @@ async function main() {
     job = { ...job, error: undefined }; // clear any stale error from a prior failed attempt
     try {
       if (job.state === "SEEN" || job.state === "ATTEST_WAIT") {
-        store.upsert({ ...job, state: "ATTEST_WAIT" });
+        store.upsert({ ...job, state: "ATTEST_WAIT", attestWaitStartedAt: new Date().toISOString() });
         await withRetry("attest-wait", config.maxRetries, () =>
           waitAttested(proofBuilder, config.sourceChainKey, job.blockHeight, config.pollIntervalMs)
         );
+        store.upsert({ ...store.get(job.key)!, attestConfirmedAt: new Date().toISOString() });
       }
 
       store.upsert({ ...store.get(job.key)!, state: "PROOF_FETCH" });
       const proof = await withRetry("proof-fetch", config.maxRetries, () =>
         fetchProof(proofBuilder, job.sepoliaTxHash)
       );
+      store.upsert({ ...store.get(job.key)!, proofFetchedAt: new Date().toISOString() });
 
       store.upsert({ ...store.get(job.key)!, state: "SUBMIT" });
       const result = await submitImport(importer, proof, config.maxRetries);
 
       const current = store.get(job.key)!;
+      const confirmedAt = new Date().toISOString();
       if (result.terminal === "confirmed") {
-        store.upsert({ ...current, state: "CONFIRMED", ccTxHash: result.txHash });
+        const final = { ...current, state: "CONFIRMED" as const, ccTxHash: result.txHash, confirmedAt };
+        store.upsert(final);
         console.log(`[worker] CONFIRMED subject=${job.subject} nonce=${job.snapshotNonce} tx=${result.txHash}`);
+        recordLatency(config.stateDir, final);
       } else {
         store.upsert({ ...current, state: "CONFIRMED", error: "already imported (replay/stale-nonce revert)" });
         console.log(`[worker] already imported subject=${job.subject} nonce=${job.snapshotNonce} — CONFIRMED`);
+        // Not a fresh end-to-end journey (someone/something already imported this query first) —
+        // skip the latency sample rather than record a misleading data point.
       }
     } catch (err: any) {
       const current = store.get(job.key) ?? job;

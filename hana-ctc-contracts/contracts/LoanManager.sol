@@ -9,6 +9,7 @@ import {ILoanManager} from "./interfaces/ILoanManager.sol";
 import {ICreditRegistry} from "./interfaces/ICreditRegistry.sol";
 import {ILendingPool} from "./interfaces/ILendingPool.sol";
 import {ISettlementVault} from "./interfaces/ISettlementVault.sol";
+import {IPenguinSwapRouter} from "./interfaces/IPenguinSwapRouter.sol";
 
 /// @title LoanManager
 /// @notice Originates, services, completes and liquidates loans across all four loan types.
@@ -32,6 +33,16 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
     uint256 public keeperIncentive = 5 * 1e6; // flat, paid from seized collateral surplus
     uint256 public collateralRatioBps = 15_000; // 150% for OVERCOLLATERALIZED
     uint64 public revolvingReviewPeriod = 30 days;
+
+    // ---- liquidation swap route --------------------------------------------
+    /// @notice PenguinSwap-shaped router used to convert non-asset collateral to `asset` on
+    ///         liquidation. Owner-settable so the real mainnet PenguinSwap address drops in with no
+    ///         redeployment; unset on testnet until wired, at which point same-asset collateral still
+    ///         liquidates fine without it.
+    IPenguinSwapRouter public swapRouter;
+    /// @notice Governable ceiling on acceptable slippage for a collateral swap, in bps of the router's
+    ///         own spot quote. Enforced in addition to (not instead of) the caller's `minAmountOut`.
+    uint256 public maxSlippageBps = 500; // 5%
 
     struct Loan {
         address borrower;
@@ -61,6 +72,9 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
     mapping(address => uint256[]) private _userLoans;
 
     event ServicingParamsUpdated();
+    event SwapRouterUpdated(address router);
+    event MaxSlippageUpdated(uint256 bps);
+    event CollateralSwapped(uint256 indexed loanId, address collateralAsset, uint256 amountIn, uint256 amountOut);
 
     constructor(
         ICreditRegistry registry_,
@@ -220,7 +234,7 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
     // =====================================================================
     //                           liquidation
     // =====================================================================
-    function liquidate(uint256 loanId) external nonReentrant {
+    function liquidate(uint256 loanId, uint256 minAmountOut) external nonReentrant {
         Loan storage l = loans[loanId];
         require(l.status == LoanStatus.ACTIVE, "lm: not active");
 
@@ -244,25 +258,25 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
             address collateralAsset = l.collateralAsset;
             l.collateralAmount = 0;
 
-            if (collateralAsset == address(asset)) {
-                uint256 repayAmt = collateral >= owed ? owed : collateral;
-                uint256 principalPart = repayAmt >= owedPrincipal ? owedPrincipal : repayAmt;
-                uint256 interestPart = repayAmt - principalPart;
-                asset.forceApprove(address(pool), repayAmt);
-                pool.repay(principalPart, interestPart);
-                if (principalPart < owedPrincipal) {
-                    pool.recordBadDebt(owedPrincipal - principalPart);
-                }
+            // Same-asset collateral needs no swap; otherwise route it through PenguinSwap. Either way
+            // `proceeds` ends up denominated in `asset`, and the settlement math below is identical.
+            uint256 proceeds = collateralAsset == address(asset)
+                ? collateral
+                : _swapCollateral(loanId, collateralAsset, collateral, minAmountOut);
 
-                uint256 leftover = collateral - repayAmt;
-                uint256 fee = leftover >= keeperIncentive ? keeperIncentive : leftover;
-                if (fee > 0) asset.safeTransfer(msg.sender, fee);
-                if (leftover - fee > 0) asset.safeTransfer(l.borrower, leftover - fee);
-            } else {
-                // No on-chain DEX on testnet: hand the collateral to the keeper, socialize the principal.
-                IERC20(collateralAsset).safeTransfer(msg.sender, collateral);
-                pool.recordBadDebt(owedPrincipal);
+            uint256 repayAmt = proceeds >= owed ? owed : proceeds;
+            uint256 principalPart = repayAmt >= owedPrincipal ? owedPrincipal : repayAmt;
+            uint256 interestPart = repayAmt - principalPart;
+            asset.forceApprove(address(pool), repayAmt);
+            pool.repay(principalPart, interestPart);
+            if (principalPart < owedPrincipal) {
+                pool.recordBadDebt(owedPrincipal - principalPart);
             }
+
+            uint256 leftover = proceeds - repayAmt;
+            uint256 fee = leftover >= keeperIncentive ? keeperIncentive : leftover;
+            if (fee > 0) asset.safeTransfer(msg.sender, fee);
+            if (leftover - fee > 0) asset.safeTransfer(l.borrower, leftover - fee);
         } else {
             l.status = LoanStatus.DEFAULTED;
             pool.recordBadDebt(owedPrincipal);
@@ -271,6 +285,39 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
         l.outstandingPrincipal = 0;
         l.outstandingInterest = 0;
         emit LoanLiquidated(loanId, msg.sender, owed);
+    }
+
+    /// @dev Swaps seized `collateralAsset` for `asset` via `swapRouter`. The effective slippage floor
+    ///      is whichever is stricter: the caller's `minAmountOut` or the governable `maxSlippageBps`
+    ///      bound applied to the router's own spot quote — so a careless or malicious keeper can't
+    ///      pass an unprotective `minAmountOut` and get away with it.
+    function _swapCollateral(
+        uint256 loanId,
+        address collateralAsset,
+        uint256 amountIn,
+        uint256 minAmountOut
+    ) private returns (uint256 amountOut) {
+        require(address(swapRouter) != address(0), "lm: swap router not set");
+
+        address[] memory path = new address[](2);
+        path[0] = collateralAsset;
+        path[1] = address(asset);
+
+        uint256[] memory quoted = swapRouter.getAmountsOut(amountIn, path);
+        uint256 expectedOut = quoted[quoted.length - 1];
+        uint256 floor = (expectedOut * (BPS - maxSlippageBps)) / BPS;
+        uint256 effectiveMin = minAmountOut > floor ? minAmountOut : floor;
+
+        IERC20(collateralAsset).forceApprove(address(swapRouter), amountIn);
+        uint256[] memory amounts = swapRouter.swapExactTokensForTokens(
+            amountIn,
+            effectiveMin,
+            path,
+            address(this),
+            block.timestamp
+        );
+        amountOut = amounts[amounts.length - 1];
+        emit CollateralSwapped(loanId, collateralAsset, amountIn, amountOut);
     }
 
     // =====================================================================
@@ -359,5 +406,19 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
         collateralRatioBps = collateralRatioBps_;
         revolvingReviewPeriod = revolvingReviewPeriod_;
         emit ServicingParamsUpdated();
+    }
+
+    /// @notice Point at a PenguinSwap-shaped router. The real mainnet PenguinSwap address drops in
+    ///         here with no redeployment; pass `address(0)` to disable swapping (only same-asset
+    ///         collateral liquidates until it's set again).
+    function setSwapRouter(address v) external onlyOwner {
+        swapRouter = IPenguinSwapRouter(v);
+        emit SwapRouterUpdated(v);
+    }
+
+    function setMaxSlippageBps(uint256 v) external onlyOwner {
+        require(v <= 2_000, "lm: slippage bound too high"); // cap at 20%, a governance footgun guard
+        maxSlippageBps = v;
+        emit MaxSlippageUpdated(v);
     }
 }

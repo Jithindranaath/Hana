@@ -27,6 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/lend" className="text-slate-300 hover:text-white">
               Lend
             </Link>
+            <Link href="/credit-line" className="text-slate-300 hover:text-white">
+              Credit Line
+            </Link>
             <div className="ml-auto">
               <ConnectButton />
             </div>

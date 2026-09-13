@@ -8,13 +8,20 @@ import {ScoreModel} from "./libraries/ScoreModel.sol";
 
 /// @title CreditRegistry
 /// @notice The reusable, multi-dimensional credit primitive for Creditcoin.
-/// @dev Two write paths only: `recordNativeActivity` (onlyLoanManager) and
+/// @dev Two write paths only: `recordNativeActivity` (onlyReporter, an owner-managed allowlist of
+///      native-activity reporters — e.g. `LoanManager`, `SpaceCreditLine`) and
 ///      `importAttestedHistory` (onlyImporterASC). Read `getCreditLimit` from anywhere.
 contract CreditRegistry is ICreditRegistry, Ownable {
     // ---- wiring ------------------------------------------------------------
     address public loanManager;
     address public importerASC;
     ILendingPool public lendingPool;
+
+    // ---- reporters -----------------------------------------------------------
+    /// @notice Contracts authorized to write native activity via `recordNativeActivity`.
+    ///         Owner-managed so any number of consumer applications (BNPL's `LoanManager`,
+    ///         a DePIN credit line, etc.) can report through the same interface.
+    mapping(address => bool) public authorizedReporters;
 
     // ---- governable parameters ------------------------------------------------
     uint256 public importWeightBps = 6_000; // imported history counts as 60% of native
@@ -25,6 +32,7 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     struct AssetConfig {
         bool enabled;
         uint256 maxLimit; // overrides limitCurve.maxLimit for this asset
+        uint256 exposureCap; // overrides perAccountExposureCap for this asset; 0 = use the global default
     }
     mapping(address => AssetConfig) public assetConfigs;
 
@@ -34,11 +42,12 @@ contract CreditRegistry is ICreditRegistry, Ownable {
 
     // ---- events (governance) -------------------------------------------------
     event WiringUpdated(address loanManager, address importerASC, address lendingPool);
+    event ReporterUpdated(address indexed reporter, bool authorized);
     event ParametersUpdated();
-    event AssetConfigUpdated(address indexed asset, bool enabled, uint256 maxLimit);
+    event AssetConfigUpdated(address indexed asset, bool enabled, uint256 maxLimit, uint256 exposureCap);
 
-    modifier onlyLoanManager() {
-        require(msg.sender == loanManager, "registry: not loan manager");
+    modifier onlyReporter() {
+        require(authorizedReporters[msg.sender], "registry: not authorized reporter");
         _;
     }
 
@@ -52,7 +61,7 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     // =====================================================================
     //                         WRITE PATH 1: native
     // =====================================================================
-    function recordNativeActivity(RecordType kind, address user, uint256 amount) external onlyLoanManager {
+    function recordNativeActivity(RecordType kind, address user, uint256 amount) external onlyReporter {
         _bootstrap(user);
         CreditProfile storage p = _profiles[user];
 
@@ -118,8 +127,12 @@ contract CreditRegistry is ICreditRegistry, Ownable {
         uint16 score = p.bootstrapped ? p.compositeScore : uint16(ScoreModel.SCORE_MIN);
         AssetConfig memory cfg = assetConfigs[asset];
         uint256 maxLimit = cfg.enabled ? cfg.maxLimit : limitCurve.maxLimit;
+        // `perAccountExposureCap` is denominated in the default (6-dp) asset's units; an asset on a
+        // different decimal scale (e.g. an 18-dp token) MUST set its own `exposureCap`, or every limit
+        // for it will be clamped to a near-zero raw-unit amount.
+        uint256 cap = (cfg.enabled && cfg.exposureCap > 0) ? cfg.exposureCap : perAccountExposureCap;
         uint256 gross = ScoreModel.creditLimit(score, ScoreModel.LimitCurve(limitCurve.floorScore, maxLimit));
-        return gross > perAccountExposureCap ? perAccountExposureCap : gross;
+        return gross > cap ? cap : gross;
     }
 
     function getAvailableCredit(address user, address asset) external view returns (uint256) {
@@ -206,6 +219,12 @@ contract CreditRegistry is ICreditRegistry, Ownable {
         emit WiringUpdated(loanManager, importerASC, address(lendingPool));
     }
 
+    /// @notice Authorize or revoke a contract's ability to call `recordNativeActivity`.
+    function setReporter(address reporter, bool authorized) external onlyOwner {
+        authorizedReporters[reporter] = authorized;
+        emit ReporterUpdated(reporter, authorized);
+    }
+
     function setImporterASC(address v) external onlyOwner {
         importerASC = v;
         emit WiringUpdated(loanManager, importerASC, address(lendingPool));
@@ -239,8 +258,8 @@ contract CreditRegistry is ICreditRegistry, Ownable {
         emit ParametersUpdated();
     }
 
-    function setAssetConfig(address asset, bool enabled, uint256 maxLimit) external onlyOwner {
-        assetConfigs[asset] = AssetConfig(enabled, maxLimit);
-        emit AssetConfigUpdated(asset, enabled, maxLimit);
+    function setAssetConfig(address asset, bool enabled, uint256 maxLimit, uint256 exposureCap) external onlyOwner {
+        assetConfigs[asset] = AssetConfig(enabled, maxLimit, exposureCap);
+        emit AssetConfigUpdated(asset, enabled, maxLimit, exposureCap);
     }
 }

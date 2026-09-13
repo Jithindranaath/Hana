@@ -1,9 +1,11 @@
 # Hana Network (Creditcoin): Project Specification
 
 ## 1. Project Vision
-Hana is a **cross-chain credit layer** on **Creditcoin**, providing portable financial identity and accessible credit. A wallet proves its lending and repayment history from another chain using the **Attestcoin Protocol**, and borrows against that history on Creditcoin. A **Buy Now, Pay Later (BNPL)** checkout ships as the reference application demonstrating the primitive end-to-end.
+Hana is a **cross-chain credit primitive** for **Creditcoin**: `CreditRegistry` imports a wallet's lending and repayment history from another chain via the **Attestcoin Protocol**, and exposes it through one call — `getCreditLimit(address, asset)` — that any Creditcoin contract can read to underwrite that wallet. The registry is the product.
 
-Hana is infrastructure first, application second. `CreditRegistry` is a public good — any Creditcoin dApp can call `getCreditLimit(address, asset)` and act on an attested, multi-chain credit profile.
+Two reference applications prove the primitive works, and prove it's reusable rather than app-specific: a **Buy Now, Pay Later (BNPL)** checkout (reference app #1), and **SpaceCreditLine** (reference app #2), a DePIN node-operator credit line drawn against the same imported score and repaid from staking yield instead of outside capital — the underwriting layer for the SpaceRouter Credit Line product already on Creditcoin's own published roadmap. Neither reference application is coupled to the other; both are simply owner-authorized reporters against the same registry interface, which is exactly the shape any third integrating protocol would use.
+
+Hana is infrastructure first, applications second. `CreditRegistry` is a public good — any Creditcoin dApp can call `getCreditLimit(address, asset)` and act on an attested, multi-chain credit profile, with no partnership, no permission, and no oracle subscription required.
 
 ---
 
@@ -16,12 +18,24 @@ Hana is infrastructure first, application second. `CreditRegistry` is a public g
 ---
 
 ## 3. Solution Overview
-Hana provides a unified credit infrastructure where:
-1. **Shoppers** import their cross-chain credit history cryptographically, then purchase goods using installments.
-2. **Lenders** provide liquidity to a pool and earn yield from protocol fees and interest.
-3. **Merchants** receive immediate or escrowed settlement, increasing sales conversion.
-4. **Credit scoring** is handled on-chain via a transparent, behavior-based algorithm that spans multiple chains.
-5. **Other protocols** read `CreditRegistry` directly as a shared ecosystem primitive.
+At the center is one public, on-chain credit primitive; everything else consumes it.
+1. **Integrating protocols** read `CreditRegistry.getCreditLimit(address, asset)` directly — the
+   shared ecosystem primitive every reference application below (and any future one) is built on
+   top of, not underneath.
+2. **Credit scoring** is handled on-chain via a transparent, behavior-based algorithm that spans
+   multiple chains, feeding that primitive.
+
+Two reference applications consume it end-to-end, proving it's reusable rather than app-specific:
+
+**Reference app #1 — BNPL checkout:**
+3. **Shoppers** import their cross-chain credit history cryptographically, then purchase goods
+   using installments.
+4. **Lenders** provide liquidity to a pool and earn yield from protocol fees and interest.
+5. **Merchants** receive immediate or escrowed settlement, increasing sales conversion.
+
+**Reference app #2 — SpaceCreditLine:**
+6. **DePIN node operators** draw a credit line in $SPACE against the same imported score —
+   auto-staked on their behalf — and repay it from staking yield instead of fronting capital.
 
 ### Why Creditcoin
 The Attestcoin Protocol verifies that a transaction occurred on a source chain using a Merkle inclusion proof plus a continuity proof, checked synchronously by a precompile at `0x0FD2`. This makes portable credit a cryptographic claim rather than a trust assumption. On any other chain this design requires a trusted oracle operator.

@@ -52,7 +52,11 @@ interface ILoanManager {
 
     function draw(uint256 loanId, uint256 amount) external;
 
-    function liquidate(uint256 loanId) external;
+    /// @param minAmountOut Keeper-supplied slippage floor for a different-asset collateral swap via
+    ///        `swapRouter`; ignored when the collateral is already the loan asset or the loan isn't
+    ///        OVERCOLLATERALIZED. The contract also enforces its own governable `maxSlippageBps`
+    ///        floor regardless of what the caller passes here.
+    function liquidate(uint256 loanId, uint256 minAmountOut) external;
 
     function amountDue(uint256 loanId) external view returns (uint256 principal, uint256 interest);
 }
