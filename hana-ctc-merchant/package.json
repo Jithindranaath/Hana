@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
-    "db:memory": "tsx scripts/db-memory.ts"
+    "db:memory": "tsx scripts/db-memory.ts",
+    "ensure-demo-merchant": "tsx scripts/ensure-demo-merchant.ts"
   },
   "dependencies": {
     "@hana/shared": "workspace:*",

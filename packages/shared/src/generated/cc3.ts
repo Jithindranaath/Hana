@@ -489,7 +489,7 @@ export const contracts = {
     ]
   },
   "CreditRegistry": {
-    "address": "0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B",
+    "address": "0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1",
     "abi": [
       {
         "inputs": [
@@ -609,6 +609,12 @@ export const contracts = {
             "type": "uint8"
           },
           {
+            "indexed": true,
+            "internalType": "address",
+            "name": "asset",
+            "type": "address"
+          },
+          {
             "indexed": false,
             "internalType": "uint256",
             "name": "amount",
@@ -725,6 +731,19 @@ export const contracts = {
         "type": "event"
       },
       {
+        "inputs": [],
+        "name": "accountingAsset",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
         "inputs": [
           {
             "internalType": "address",
@@ -747,6 +766,30 @@ export const contracts = {
           {
             "internalType": "uint256",
             "name": "exposureCap",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "assetDebt",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
             "type": "uint256"
           }
         ],
@@ -921,11 +964,6 @@ export const contracts = {
                 "internalType": "uint64",
                 "name": "lastUpdated",
                 "type": "uint64"
-              },
-              {
-                "internalType": "uint256",
-                "name": "outstandingDebt",
-                "type": "uint256"
               },
               {
                 "internalType": "bool",
@@ -1163,6 +1201,11 @@ export const contracts = {
             "type": "address"
           },
           {
+            "internalType": "address",
+            "name": "asset",
+            "type": "address"
+          },
+          {
             "internalType": "uint256",
             "name": "amount",
             "type": "uint256"
@@ -1176,6 +1219,19 @@ export const contracts = {
       {
         "inputs": [],
         "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "v",
+            "type": "address"
+          }
+        ],
+        "name": "setAccountingAsset",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -3068,7 +3124,7 @@ export const contracts = {
     ]
   },
   "LoanManager": {
-    "address": "0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E",
+    "address": "0xf954359074B83d8EcE8CF5c266A9749208e30d7a",
     "abi": [
       {
         "inputs": [
@@ -4055,7 +4111,7 @@ export const contracts = {
     ]
   },
   "CreditImporterASC": {
-    "address": "0x5f344c437Df484FED87bEf2209E3bA748E11879a",
+    "address": "0xF3154Fe52444b4F6f833eF1873E734f60f713259",
     "abi": [
       {
         "inputs": [
@@ -5313,7 +5369,7 @@ export const contracts = {
     ]
   },
   "SpaceCreditLine": {
-    "address": "0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805",
+    "address": "0x65A38BfCB9a5741097aa78F1acAf5f05d3bC908E",
     "abi": [
       {
         "inputs": [

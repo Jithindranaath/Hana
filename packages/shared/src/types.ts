@@ -43,8 +43,10 @@ export interface CreditProfile {
   volumeScore: number;
   tenureScore: number;
   hasImportedHistory: boolean;
-  outstandingDebt: bigint;
 }
+
+/** Outstanding debt is per-asset, not part of `CreditProfile` — read via the contract's
+ *  `assetDebt(user, asset)` or `getAvailableCredit(user, asset)`, never aggregated across assets. */
 
 /** Shape returned by the worker's `GET /status/:address` (see hana-ctc-worker). */
 export interface ImportStatus {

@@ -12,18 +12,19 @@ describe("CreditRegistry", () => {
   });
 
   it("rejects recordNativeActivity from anyone not an authorized reporter", async () => {
-    const { registry, outsider, borrower } = await loadFixture(deployProtocol);
+    const { registry, outsider, borrower, iusdc } = await loadFixture(deployProtocol);
     await expect(
-      registry.connect(outsider).recordNativeActivity(0, borrower.address, USDC(100))
+      registry.connect(outsider).recordNativeActivity(0, borrower.address, await iusdc.getAddress(), USDC(100))
     ).to.be.revertedWith("registry: not authorized reporter");
   });
 
   it("lets the owner authorize a second reporter, which can then write, independent of the first", async () => {
-    const { registry, outsider, borrower } = await loadFixture(deployProtocol);
+    const { registry, outsider, borrower, iusdc } = await loadFixture(deployProtocol);
+    const asset = await iusdc.getAddress();
 
     // Not yet authorized: still rejected.
     await expect(
-      registry.connect(outsider).recordNativeActivity(0, borrower.address, USDC(100))
+      registry.connect(outsider).recordNativeActivity(0, borrower.address, asset, USDC(100))
     ).to.be.revertedWith("registry: not authorized reporter");
 
     await expect(registry.setReporter(outsider.address, true))
@@ -32,11 +33,12 @@ describe("CreditRegistry", () => {
     expect(await registry.authorizedReporters(outsider.address)).to.equal(true);
 
     // Now authorized: succeeds and is independently revocable without touching the original reporter.
-    await expect(registry.connect(outsider).recordNativeActivity(1, borrower.address, 0)).to.not.be.reverted;
+    await expect(registry.connect(outsider).recordNativeActivity(1, borrower.address, asset, 0)).to.not.be
+      .reverted;
 
     await registry.setReporter(outsider.address, false);
     await expect(
-      registry.connect(outsider).recordNativeActivity(1, borrower.address, 0)
+      registry.connect(outsider).recordNativeActivity(1, borrower.address, asset, 0)
     ).to.be.revertedWith("registry: not authorized reporter");
   });
 
@@ -64,7 +66,8 @@ describe("CreditRegistry", () => {
 
   it("raises the score on on-time native payments and lowers it on a default", async () => {
     const ctx = await loadFixture(deployProtocol);
-    const { registry, loanManager, borrower } = ctx;
+    const { registry, loanManager, borrower, iusdc } = ctx;
+    const asset = await iusdc.getAddress();
 
     // Give the borrower a foothold via import so LoanManager-driven native activity is observable
     // (the registry itself is exercised directly here via impersonation of the wired LoanManager).
@@ -74,19 +77,19 @@ describe("CreditRegistry", () => {
       "0x56BC75E2D63100000",
     ]);
 
-    await registry.connect(lmSigner).recordNativeActivity(0, borrower.address, USDC(1000)); // ORIGINATED
+    await registry.connect(lmSigner).recordNativeActivity(0, borrower.address, asset, USDC(1000)); // ORIGINATED
     const afterOrigination = await registry.getProfile(borrower.address);
 
     for (let i = 0; i < 10; i++) {
-      await registry.connect(lmSigner).recordNativeActivity(1, borrower.address, 0); // ON_TIME
+      await registry.connect(lmSigner).recordNativeActivity(1, borrower.address, asset, 0); // ON_TIME
     }
     const afterOnTime = await registry.getProfile(borrower.address);
     expect(afterOnTime.compositeScore).to.be.gt(afterOrigination.compositeScore);
 
-    await registry.connect(lmSigner).recordNativeActivity(4, borrower.address, USDC(1000)); // DEFAULTED
+    await registry.connect(lmSigner).recordNativeActivity(4, borrower.address, asset, USDC(1000)); // DEFAULTED
     const afterDefault = await registry.getProfile(borrower.address);
     expect(afterDefault.compositeScore).to.be.lt(afterOnTime.compositeScore);
-    expect(afterDefault.outstandingDebt).to.equal(0);
+    expect(await registry.assetDebt(borrower.address, asset)).to.equal(0);
   });
 
   it("weighs imported history below equivalent native history", async () => {
@@ -111,12 +114,13 @@ describe("CreditRegistry", () => {
       await ctxB.loanManager.getAddress(),
       "0x56BC75E2D63100000",
     ]);
-    await ctxB.registry.connect(lmSigner).recordNativeActivity(0, ctxB.borrower.address, USDC(50_000));
+    const assetB = await ctxB.iusdc.getAddress();
+    await ctxB.registry.connect(lmSigner).recordNativeActivity(0, ctxB.borrower.address, assetB, USDC(50_000));
     for (let i = 0; i < 40; i++) {
-      await ctxB.registry.connect(lmSigner).recordNativeActivity(1, ctxB.borrower.address, 0);
+      await ctxB.registry.connect(lmSigner).recordNativeActivity(1, ctxB.borrower.address, assetB, 0);
     }
     await time.increase(400 * 86400);
-    await ctxB.registry.connect(lmSigner).recordNativeActivity(1, ctxB.borrower.address, 0); // nudge a recompute after warping
+    await ctxB.registry.connect(lmSigner).recordNativeActivity(1, ctxB.borrower.address, assetB, 0); // nudge a recompute after warping
     const scoreNative = (await ctxB.registry.getProfile(ctxB.borrower.address)).compositeScore;
 
     expect(scoreImported).to.be.lt(scoreNative);
@@ -179,9 +183,50 @@ describe("CreditRegistry", () => {
       await ctx.loanManager.getAddress(),
       "0x56BC75E2D63100000",
     ]);
-    await registry.connect(lmSigner).recordNativeActivity(0, borrower.address, USDC(500)); // ORIGINATED
+    await registry.connect(lmSigner).recordNativeActivity(0, borrower.address, asset, USDC(500)); // ORIGINATED
 
     const available = await registry.getAvailableCredit(borrower.address, asset);
     expect(available).to.equal(gross - USDC(500));
+  });
+
+  it("debt in one asset never affects available credit in a different asset (regression: cross-asset scale corruption)", async () => {
+    // A wallet draws heavily in an 18-dp asset (SPACE-shaped numbers) via a second reporter, then
+    // checks its 6-dp iUSDC credit is untouched. Before assetDebt was partitioned per-asset, a
+    // single shared `outstandingDebt` field meant an 18-dp raw amount (~1e21) permanently dwarfed
+    // a 6-dp limit (~1e9), driving getAvailableCredit(iUSDC) to 0 regardless of real iUSDC debt.
+    const ctx = await loadFixture(deployProtocol);
+    const { registry, outsider, borrower, iusdc } = ctx;
+    const iusdcAddr = await iusdc.getAddress();
+    const spaceLikeAsset = outsider.address; // any distinct address stands in for a second asset here
+
+    await importHistory(ctx, borrower.address, {
+      loansCompleted: 10,
+      onTimePayments: 40,
+      latePayments: 0,
+      defaults: 0,
+      cumulativeBorrowedWei: U18(100_000),
+      firstActivityTimestamp: await daysAgo(400),
+      snapshotNonce: 1n,
+    });
+    const iusdcLimitBefore = await registry.getCreditLimit(borrower.address, iusdcAddr);
+    const iusdcAvailableBefore = await registry.getAvailableCredit(borrower.address, iusdcAddr);
+    expect(iusdcAvailableBefore).to.equal(iusdcLimitBefore);
+
+    await registry.setReporter(await ctx.loanManager.getAddress(), true); // already true; explicit for clarity
+    const lmSigner = await ethers.getImpersonatedSigner(await ctx.loanManager.getAddress());
+    await ethers.provider.send("hardhat_setBalance", [
+      await ctx.loanManager.getAddress(),
+      "0x56BC75E2D63100000",
+    ]);
+    // A huge, 18-dp-scale draw in the OTHER asset — the exact shape that broke iUSDC availability.
+    await registry
+      .connect(lmSigner)
+      .recordNativeActivity(0, borrower.address, spaceLikeAsset, U18(1_000_000_000));
+
+    const iusdcAvailableAfter = await registry.getAvailableCredit(borrower.address, iusdcAddr);
+    expect(iusdcAvailableAfter).to.equal(iusdcAvailableBefore); // completely unaffected
+
+    const otherAssetDebt = await registry.assetDebt(borrower.address, spaceLikeAsset);
+    expect(otherAssetDebt).to.equal(U18(1_000_000_000)); // tracked correctly in its own bucket
   });
 });

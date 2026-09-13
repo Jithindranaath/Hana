@@ -68,7 +68,12 @@ contract SpaceCreditLine is Ownable {
         space.forceApprove(address(staking), amount);
         staking.depositFor(msg.sender, amount);
 
-        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_ORIGINATED, msg.sender, amount);
+        registry.recordNativeActivity(
+            ICreditRegistry.RecordType.LOAN_ORIGINATED,
+            msg.sender,
+            address(space),
+            amount
+        );
         emit LineOpened(msg.sender, amount, l.principal);
     }
 
@@ -100,10 +105,20 @@ contract SpaceCreditLine is Ownable {
         }
 
         if (appliedToPrincipal > 0) {
-            registry.recordNativeActivity(ICreditRegistry.RecordType.DEBT_REPAID, msg.sender, appliedToPrincipal);
+            registry.recordNativeActivity(
+                ICreditRegistry.RecordType.DEBT_REPAID,
+                msg.sender,
+                address(space),
+                appliedToPrincipal
+            );
         }
         if (wasOutstanding && l.principal == 0 && l.interestOwed == 0) {
-            registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_COMPLETED, msg.sender, 0);
+            registry.recordNativeActivity(
+                ICreditRegistry.RecordType.LOAN_COMPLETED,
+                msg.sender,
+                address(space),
+                0
+            );
         }
 
         // Debt fully serviced: any leftover claimed yield goes straight to the operator.

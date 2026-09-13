@@ -61,6 +61,7 @@ export async function deployProtocol() {
     await pool.getAddress()
   );
   await registry.setReporter(await loanManager.getAddress(), true);
+  await registry.setAccountingAsset(await iusdc.getAddress());
   await pool.setLoanManager(await loanManager.getAddress());
   await vault.setLoanManager(await loanManager.getAddress());
   await importer.setAttestor(SOURCE_CHAIN_KEY, attestorEOA.address);

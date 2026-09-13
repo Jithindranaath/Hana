@@ -16,6 +16,14 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     address public loanManager;
     address public importerASC;
     ILendingPool public lendingPool;
+    /// @notice The asset whose native-activity `amount`s feed the volume sub-score
+    ///         (`nativeCumulativeBorrowed`), typically iUSDC. Deliberately singular, not
+    ///         per-asset: with no price oracle, there's no honest way to combine, say, iUSDC and
+    ///         SPACE borrow volume into one number, so activity in any other asset contributes to
+    ///         `nativeLoansCompleted`/`nativeOnTimePayments`/etc. (dimensionless, safe to share)
+    ///         but not to this one. Outstanding *debt* (`assetDebt` below) is unaffected by this —
+    ///         it's tracked correctly per-asset regardless.
+    address public accountingAsset;
 
     // ---- reporters -----------------------------------------------------------
     /// @notice Contracts authorized to write native activity via `recordNativeActivity`.
@@ -39,6 +47,13 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     // ---- state -----------------------------------------------------------
     mapping(address => CreditProfile) private _profiles;
     mapping(uint64 => mapping(address => uint64)) public importNonces; // chainKey => subject => nonce
+    /// @notice Outstanding native debt, per user, per asset. Was a single field on `CreditProfile`
+    ///         until a second reporter (a different-decimal asset) revealed the bug that caused:
+    ///         raw amounts from an 18-dp asset and a 6-dp asset summed into one counter made the
+    ///         6-dp asset's limit permanently unreachable (the 18-dp number dwarfs it). Genuinely
+    ///         per-asset now — `getAvailableCredit(user, asset)` only ever nets against debt in
+    ///         that same asset.
+    mapping(address => mapping(address => uint256)) public assetDebt;
 
     // ---- events (governance) -------------------------------------------------
     event WiringUpdated(address loanManager, address importerASC, address lendingPool);
@@ -61,28 +76,35 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     // =====================================================================
     //                         WRITE PATH 1: native
     // =====================================================================
-    function recordNativeActivity(RecordType kind, address user, uint256 amount) external onlyReporter {
+    function recordNativeActivity(
+        RecordType kind,
+        address user,
+        address asset,
+        uint256 amount
+    ) external onlyReporter {
         _bootstrap(user);
         CreditProfile storage p = _profiles[user];
 
         if (kind == RecordType.LOAN_ORIGINATED) {
-            p.nativeCumulativeBorrowed += uint128(amount);
-            p.outstandingDebt += amount;
+            if (asset == accountingAsset) p.nativeCumulativeBorrowed += uint128(amount);
+            assetDebt[user][asset] += amount;
         } else if (kind == RecordType.PAYMENT_ON_TIME) {
             p.nativeOnTimePayments += 1;
         } else if (kind == RecordType.PAYMENT_LATE) {
             p.nativeLatePayments += 1;
         } else if (kind == RecordType.DEBT_REPAID) {
-            p.outstandingDebt = amount >= p.outstandingDebt ? 0 : p.outstandingDebt - amount;
+            uint256 debt = assetDebt[user][asset];
+            assetDebt[user][asset] = amount >= debt ? 0 : debt - amount;
         } else if (kind == RecordType.LOAN_COMPLETED) {
             p.nativeLoansCompleted += 1;
         } else if (kind == RecordType.LOAN_DEFAULTED) {
             p.nativeDefaults += 1;
-            p.outstandingDebt = amount >= p.outstandingDebt ? 0 : p.outstandingDebt - amount;
+            uint256 debt = assetDebt[user][asset];
+            assetDebt[user][asset] = amount >= debt ? 0 : debt - amount;
         }
 
         _recompute(user);
-        emit NativeActivity(user, kind, amount);
+        emit NativeActivity(user, kind, asset, amount);
     }
 
     // =====================================================================
@@ -137,7 +159,7 @@ contract CreditRegistry is ICreditRegistry, Ownable {
 
     function getAvailableCredit(address user, address asset) external view returns (uint256) {
         uint256 gross = getCreditLimit(user, asset);
-        uint256 debt = _profiles[user].outstandingDebt;
+        uint256 debt = assetDebt[user][asset];
         return debt >= gross ? 0 : gross - debt;
     }
 
@@ -233,6 +255,13 @@ contract CreditRegistry is ICreditRegistry, Ownable {
     function setLendingPool(address v) external onlyOwner {
         lendingPool = ILendingPool(v);
         emit WiringUpdated(loanManager, importerASC, address(lendingPool));
+    }
+
+    /// @notice Set the asset whose native volume feeds the score's volume dimension (see the
+    ///         `accountingAsset` doc comment above for why this isn't per-asset).
+    function setAccountingAsset(address v) external onlyOwner {
+        accountingAsset = v;
+        emit ParametersUpdated();
     }
 
     function setWeights(uint256 repaymentBps, uint256 volumeBps, uint256 tenureBps) external onlyOwner {

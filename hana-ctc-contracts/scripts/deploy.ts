@@ -91,6 +91,11 @@ async function main() {
     await (await (registry as any).setReporter(lmAddr, true)).wait();
     console.log("  registry.setReporter(loanManager, true)");
   }
+  const iusdcAddr = await iusdc.getAddress();
+  if ((await (registry as any).accountingAsset()) !== iusdcAddr) {
+    await (await (registry as any).setAccountingAsset(iusdcAddr)).wait();
+    console.log("  registry.setAccountingAsset(iUSDC) — iUSDC volume feeds the score's volume dimension");
+  }
   if ((await (pool as any).loanManager()) !== lmAddr) {
     await (await (pool as any).setLoanManager(lmAddr)).wait();
     console.log("  pool.setLoanManager(loanManager)");

@@ -154,7 +154,12 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
             l.nextDueDate = uint64(block.timestamp) + revolvingReviewPeriod;
         }
 
-        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_ORIGINATED, msg.sender, p.principal);
+        registry.recordNativeActivity(
+            ICreditRegistry.RecordType.LOAN_ORIGINATED,
+            msg.sender,
+            address(asset),
+            p.principal
+        );
         _userLoans[msg.sender].push(loanId);
         emit LoanOriginated(loanId, msg.sender, p.loanType, p.principal, aprBps, p.billHash);
     }
@@ -189,7 +194,12 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
         asset.forceApprove(address(pool), toPrincipal + toInterest);
         pool.repay(toPrincipal, toInterest);
         if (toPrincipal > 0) {
-            registry.recordNativeActivity(ICreditRegistry.RecordType.DEBT_REPAID, l.borrower, toPrincipal);
+            registry.recordNativeActivity(
+                ICreditRegistry.RecordType.DEBT_REPAID,
+                l.borrower,
+                address(asset),
+                toPrincipal
+            );
         }
 
         if (l.loanType == LoanType.INSTALLMENT) {
@@ -199,6 +209,7 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
                     ? ICreditRegistry.RecordType.PAYMENT_LATE
                     : ICreditRegistry.RecordType.PAYMENT_ON_TIME,
                 l.borrower,
+                address(asset),
                 0
             );
             l.nextDueDate += _interval(l.termDays, l.installmentCount);
@@ -227,7 +238,12 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
 
         l.outstandingPrincipal += amount;
         pool.borrow(l.borrower, amount);
-        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_ORIGINATED, l.borrower, amount);
+        registry.recordNativeActivity(
+            ICreditRegistry.RecordType.LOAN_ORIGINATED,
+            l.borrower,
+            address(asset),
+            amount
+        );
         emit Drawn(loanId, amount);
     }
 
@@ -250,7 +266,12 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
         uint256 owedPrincipal = l.outstandingPrincipal;
         uint256 owed = owedPrincipal + l.outstandingInterest;
 
-        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_DEFAULTED, l.borrower, owedPrincipal);
+        registry.recordNativeActivity(
+            ICreditRegistry.RecordType.LOAN_DEFAULTED,
+            l.borrower,
+            address(asset),
+            owedPrincipal
+        );
 
         if (l.loanType == LoanType.OVERCOLLATERALIZED && l.collateralAmount > 0) {
             l.status = LoanStatus.LIQUIDATED;
@@ -373,7 +394,7 @@ contract LoanManager is ILoanManager, Ownable, ReentrancyGuard {
 
     function _complete(Loan storage l, uint256 loanId) private {
         l.status = LoanStatus.COMPLETED;
-        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_COMPLETED, l.borrower, 0);
+        registry.recordNativeActivity(ICreditRegistry.RecordType.LOAN_COMPLETED, l.borrower, address(asset), 0);
 
         if (l.collateralAmount > 0 && l.collateralAsset != address(0)) {
             uint256 c = l.collateralAmount;

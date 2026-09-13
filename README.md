@@ -43,22 +43,24 @@ run. Where something is implemented but *not* verified live, it's called out exp
 | Contract | Address |
 |---|---|
 | `IUSDC` | [`0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a`](https://creditcoin-testnet.blockscout.com/address/0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a#code) |
-| `CreditRegistry` | [`0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B`](https://creditcoin-testnet.blockscout.com/address/0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B#code) |
+| `CreditRegistry` | [`0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1`](https://creditcoin-testnet.blockscout.com/address/0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1#code) |
 | `LendingPool` | [`0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43`](https://creditcoin-testnet.blockscout.com/address/0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43#code) |
 | `SettlementVault` | [`0xf817e4b94914b70C00e086F30d9924Fb60C7f271`](https://creditcoin-testnet.blockscout.com/address/0xf817e4b94914b70C00e086F30d9924Fb60C7f271#code) |
-| `LoanManager` | [`0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E`](https://creditcoin-testnet.blockscout.com/address/0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E#code) |
-| `CreditImporterASC` | [`0x5f344c437Df484FED87bEf2209E3bA748E11879a`](https://creditcoin-testnet.blockscout.com/address/0x5f344c437Df484FED87bEf2209E3bA748E11879a#code) |
+| `LoanManager` | [`0xf954359074B83d8EcE8CF5c266A9749208e30d7a`](https://creditcoin-testnet.blockscout.com/address/0xf954359074B83d8EcE8CF5c266A9749208e30d7a#code) |
+| `CreditImporterASC` | [`0xF3154Fe52444b4F6f833eF1873E734f60f713259`](https://creditcoin-testnet.blockscout.com/address/0xF3154Fe52444b4F6f833eF1873E734f60f713259#code) |
 | `MockSPACE` | [`0x95457A6F26a9170B7e54136C4Fd932Af92d1730d`](https://creditcoin-testnet.blockscout.com/address/0x95457A6F26a9170B7e54136C4Fd932Af92d1730d#code) |
 | `MockSpaceStaking` | [`0x06d5357E532EB6973BB699b3B63E57039D0D9d85`](https://creditcoin-testnet.blockscout.com/address/0x06d5357E532EB6973BB699b3B63E57039D0D9d85#code) |
-| `SpaceCreditLine` | [`0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805`](https://creditcoin-testnet.blockscout.com/address/0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805#code) |
+| `SpaceCreditLine` | [`0x65A38BfCB9a5741097aa78F1acAf5f05d3bC908E`](https://creditcoin-testnet.blockscout.com/address/0x65A38BfCB9a5741097aa78F1acAf5f05d3bC908E#code) |
 | `MockPenguinSwapRouter` | [`0x2127CAdecd947df2B93b92E675820309b256f103`](https://creditcoin-testnet.blockscout.com/address/0x2127CAdecd947df2B93b92E675820309b256f103#code) |
 
-_(`CreditRegistry`, `CreditImporterASC` were redeployed once when the registry's `authorizedReporters`
-change shipped, since the prior registry couldn't authorize a second consumer contract. `LoanManager`
-was redeployed a second time, on its own, when PenguinSwap liquidation support shipped —
-`LendingPool`/`SettlementVault`/`IUSDC` kept their original addresses throughout and were just
-re-pointed at each new `LoanManager` in turn. `MockSPACE`, `MockSpaceStaking`, `SpaceCreditLine`, and
-`MockPenguinSwapRouter` are new.)_
+_(`CreditRegistry`, `LoanManager`, `CreditImporterASC`, and `SpaceCreditLine` were each redeployed
+more than once over the course of this pivot — first for the registry's `authorizedReporters`
+change, again for PenguinSwap liquidation support, and again to partition `outstandingDebt` per
+asset after live testing surfaced a real bug where an 18-decimal SPACE draw could zero out a
+wallet's 6-decimal iUSDC available credit. `LendingPool`/`SettlementVault`/`IUSDC` kept their
+original addresses throughout and were just re-pointed at each new `LoanManager` in turn.
+`MockSPACE`, `MockSpaceStaking`, and `MockPenguinSwapRouter` are unchanged since they were first
+deployed.)_
 
 **Ethereum Sepolia** (chainId `11155111`) — the credit-import source chain
 
@@ -123,7 +125,7 @@ pnpm install
 cp .env.example .env            # then fill each package's own .env — see each package's README
 
 # Contracts + attestor are already deployed (addresses above); to redeploy from scratch:
-pnpm contracts:test              # protocol unit + integration tests (53/53 passing)
+pnpm contracts:test              # protocol unit + integration tests (59/59 passing)
 pnpm attestor:test                # 7/7 passing
 pnpm attestor:deploy:sepolia && pnpm attestor:verify:sepolia
 pnpm contracts:deploy:cc3 && pnpm contracts:deploy:importer:cc3 && pnpm contracts:deploy:spacecreditline:cc3 && pnpm contracts:deploy:penguinswap:cc3 && pnpm contracts:verify:cc3

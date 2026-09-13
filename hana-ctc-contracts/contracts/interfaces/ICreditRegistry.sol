@@ -27,7 +27,7 @@ interface ICreditRegistry {
         uint64 nativeOnTimePayments;
         uint64 nativeLatePayments;
         uint64 nativeDefaults;
-        uint128 nativeCumulativeBorrowed; // in asset units (iUSDC, 6 dp)
+        uint128 nativeCumulativeBorrowed; // in `accountingAsset` units only — see CreditRegistry.accountingAsset
         uint64 importedLoansCompleted;
         uint64 importedOnTimePayments;
         uint64 importedLatePayments;
@@ -37,7 +37,6 @@ interface ICreditRegistry {
         uint64 importedFirstActivityTimestamp;
         uint64 lastImportNonce;
         uint64 lastUpdated;
-        uint256 outstandingDebt; // asset units
         bool hasImportedHistory;
         bool bootstrapped;
     }
@@ -54,11 +53,15 @@ interface ICreditRegistry {
     }
 
     event Bootstrapped(address indexed user);
-    event NativeActivity(address indexed user, RecordType indexed kind, uint256 amount);
+    event NativeActivity(address indexed user, RecordType indexed kind, address indexed asset, uint256 amount);
     event HistoryImported(address indexed subject, uint64 indexed chainKey, uint64 snapshotNonce);
     event ProfileUpdated(address indexed user, uint16 composite, uint16 repayment, uint16 volume, uint16 tenure);
 
-    function recordNativeActivity(RecordType kind, address user, uint256 amount) external;
+    /// @param asset The asset `amount` is denominated in. Determines which per-asset debt bucket
+    ///        (`CreditRegistry.assetDebt`) LOAN_ORIGINATED/DEBT_REPAID/LOAN_DEFAULTED affect — two
+    ///        reporters using different assets never share exposure. Only feeds the score's volume
+    ///        dimension when it matches `CreditRegistry.accountingAsset`.
+    function recordNativeActivity(RecordType kind, address user, address asset, uint256 amount) external;
 
     function importAttestedHistory(address subject, uint64 chainKey, ImportedSnapshot calldata snapshot) external;
 

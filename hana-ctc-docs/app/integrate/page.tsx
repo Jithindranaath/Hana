@@ -32,12 +32,18 @@ export default function IntegratePage() {
       <pre>
         <code>{`interface ICreditRegistry {
     function getCreditLimit(address user, address asset) external view returns (uint256);
+    function getAvailableCredit(address user, address asset) external view returns (uint256);
 }
 
 // in your contract:
 uint256 limit = ICreditRegistry(CREDIT_REGISTRY_ADDRESS).getCreditLimit(borrower, IUSDC_ADDRESS);
-// limit is denominated in the asset's own units (iUSDC: 6 decimals) and already accounts for
-// the borrower's outstanding debt — it's what's actually available to lend against right now.`}</code>
+// limit is denominated in the asset's own units (iUSDC: 6 decimals) — the borrower's GROSS
+// score-derived limit, not netted against anything they already owe.
+
+uint256 available = ICreditRegistry(CREDIT_REGISTRY_ADDRESS).getAvailableCredit(borrower, IUSDC_ADDRESS);
+// available = limit minus outstanding debt IN THAT SAME ASSET — this is what's actually safe to
+// lend against right now. Debt is tracked per-asset, so activity in a different asset (another
+// consumer application entirely) never affects this number.`}</code>
       </pre>
       <p>
         See <Link href="/addresses">Addresses</Link> for every deployed contract on both chains,
@@ -66,10 +72,13 @@ uint256 limit = ICreditRegistry(CREDIT_REGISTRY_ADDRESS).getCreditLimit(borrower
         uint64 importedFirstActivityTimestamp;
         uint64 lastImportNonce;
         uint64 lastUpdated;
-        uint256 outstandingDebt;
         bool hasImportedHistory;
         bool bootstrapped;
     }
+
+    // Outstanding debt lives outside the struct, keyed per-asset — assetDebt(user, asset) — so two
+    // consumer applications using different assets (e.g. iUSDC and SPACE) never share exposure.
+    function assetDebt(address user, address asset) external view returns (uint256);
 
     function getProfile(address user) external view returns (CreditProfile memory);
     function getCreditLimit(address user, address asset) external view returns (uint256);

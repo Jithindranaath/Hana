@@ -44,6 +44,7 @@ async function main() {
 
   await registry.setWiring(await loanManager.getAddress(), ethers.ZeroAddress, await pool.getAddress());
   await registry.setReporter(await loanManager.getAddress(), true);
+  await registry.setAccountingAsset(await iusdc.getAddress());
   await pool.setLoanManager(await loanManager.getAddress());
   await vault.setLoanManager(await loanManager.getAddress());
 

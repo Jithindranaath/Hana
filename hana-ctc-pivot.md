@@ -207,9 +207,26 @@ Ordered by dependency, not priority.
 
 - [x] `SpaceCreditLine`, `MockSPACE`, `MockSpaceStaking` deployed and verified on CC3 Testnet.
 - [x] A credit line opened against an imported cross-chain score, with yield visibly repaying principal. Live smoke test: `pnpm contracts:smoke:spacecreditline:cc3`.
-- [x] `CreditRegistry` serving two independent consumer contracts through the same interface. `LoanManager` and `SpaceCreditLine` both authorized reporters; verified live on-chain.
+- [x] `CreditRegistry` serving two independent consumer contracts through the same interface. `LoanManager` and `SpaceCreditLine` both authorized reporters; verified live on-chain. **This was not actually true until a live-testing pass caught and fixed a real bug — see §13 below.**
 - [x] Liquidation converting seized collateral through a swap router and repaying the pool. `MockPenguinSwapRouter` deployed, verified, wired into the live `LoanManager` on CC3. Not yet exercised as a *CC3* transaction — `termDays >= 1` is a hardcoded 24h floor on every loan type, so a genuinely fresh CC3 liquidation can't be ready before tomorrow, which conflicts with today's deadline. Instead: `pnpm contracts:demo:liquidation:local` deploys the identical contracts fresh to a local node and runs the complete real flow — originate, fast-forward past default, liquidate, swap, repay, keeper paid, borrower refunded. Verified working end to end (1 WETH swapped for exactly 2,000 iUSDC, pool made whole, zero collateral left stranded) — ready to screen-record now.
 - [x] Measured Attestcoin latency published, and the import flow matching it. ~9 min confirmed (3rd real measurement); async worker kept as-is, matching that number.
 - [x] Docs leading with the primitive, with a working third-party integration snippet. Landing page, spec, architecture diagram, and "Build on Hana" page all reframed; Credal positioning added.
 - [ ] Demo video re-recorded with the two-application structure. **Needs you** — recording/uploading isn't something I can do.
 - [ ] DoraHacks submission updated: description, Attestcoin summary, deck, video URL, all contract addresses across both chains. Description/summary/addresses drafted and current in `planning/dorahacks-submission-draft.md`; video URL, deck line, team, logo, and the actual BUIDL page submission still need you.
+
+---
+
+## 13. Addendum — a real cross-asset bug found while preparing the demo (not in the original scope)
+
+While building the click-through autopilot script for recording (`hana-ctc-checkout/demo/autopilot.ts`), running the full flow live on CC3 — draw a SPACE credit line, then try to originate a BNPL loan on the same wallet — surfaced that the second step failed: available iUSDC credit had dropped to exactly 0.
+
+**Root cause:** `CreditRegistry` tracked `outstandingDebt` in a single field shared across every asset. SPACE is an 18-decimal token; iUSDC is 6-decimal. A SPACE draw's raw amount (~1,027 SPACE ≈ 1.03 × 10²¹ raw units) completely dwarfed the iUSDC limit's raw-unit scale (~4,800 iUSDC ≈ 4.8 × 10⁹ raw units) in that one shared counter, so `getAvailableCredit` for iUSDC computed as `debt >= gross ? 0 : gross - debt` and permanently returned 0 regardless of real iUSDC debt. The same bug also corrupted `nativeCumulativeBorrowed` (the volume sub-score input), which assumes 6-decimal amounts throughout `_recompute`. This directly contradicted the pivot's central claim — "two independent reference applications, zero coupling" — in the one place a judge would actually notice: trying both products from the same wallet.
+
+**Fix:** `CreditRegistry.assetDebt(user, asset)` replaces the single `outstandingDebt` field, so each asset's debt is netted only against that asset's own limit. The volume sub-score now only accumulates from a single, owner-configured `accountingAsset` (set to iUSDC) rather than summing raw amounts across incompatible decimal scales — there's no price oracle to honestly combine, say, SPACE and iUSDC volume into one number, so SPACE activity still contributes to the shared, dimensionless repayment/completion counters (a good SpaceCreditLine repayment record genuinely helps the BNPL-relevant score dimensions) but not to volume. `recordNativeActivity` gained an `asset` parameter; `LoanManager` (5 call sites) and `SpaceCreditLine` (3 call sites) were updated to pass their respective assets.
+
+**Verified, not just patched:**
+- Two new regression tests: `CreditRegistry.t.ts` (registry-level, a synthetic large draw in a second asset) and `SpaceCreditLine.t.ts` (end-to-end through the real `LoanManager` + `SpaceCreditLine` — draws the full SPACE line, then originates a real BNPL loan for the wallet's full original iUSDC credit and confirms it succeeds). 59/59 tests passing.
+- `CreditRegistry`, `LoanManager`, `CreditImporterASC`, and `SpaceCreditLine` all redeployed to CC3, verified on Blockscout, re-wired, and the base BNPL smoke flow re-confirmed live.
+- The "excellent" demo wallet's cross-chain import was re-run against the new registry (a fresh `snapshot()` + the real ~9-minute attestation wait, same mechanism as every prior redeploy in this document).
+
+**Why this matters beyond the bug itself:** it was caught by actually running the full user journey live against real deployed contracts — not by the 55 tests that were passing before it, none of which exercised both reference applications against the same wallet in sequence. The two new regression tests close exactly that gap.

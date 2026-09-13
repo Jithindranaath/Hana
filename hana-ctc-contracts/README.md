@@ -11,31 +11,43 @@ Attestcoin precompile (Phase 1 spike, see `planning/attestation-latency.md`) —
 | Contract | CC3 address |
 |---|---|
 | `IUSDC` | [`0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a`](https://creditcoin-testnet.blockscout.com/address/0xe517Ff9Db1111A9e81A34AD512E7dc438DdB0f4a#code) |
-| `CreditRegistry` | [`0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B`](https://creditcoin-testnet.blockscout.com/address/0xf2e70CCAdafD2e8c6285754318e59b7d2a32718B#code) |
+| `CreditRegistry` | [`0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1`](https://creditcoin-testnet.blockscout.com/address/0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1#code) |
 | `LendingPool` | [`0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43`](https://creditcoin-testnet.blockscout.com/address/0xcB08F80fFF56C7110Eca231CafBCd2AdD5363a43#code) |
 | `SettlementVault` | [`0xf817e4b94914b70C00e086F30d9924Fb60C7f271`](https://creditcoin-testnet.blockscout.com/address/0xf817e4b94914b70C00e086F30d9924Fb60C7f271#code) |
-| `LoanManager` | [`0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E`](https://creditcoin-testnet.blockscout.com/address/0xc73157b64b7034d9Bd0A69c1ca050E17F3c1C51E#code) |
-| `CreditImporterASC` | [`0x5f344c437Df484FED87bEf2209E3bA748E11879a`](https://creditcoin-testnet.blockscout.com/address/0x5f344c437Df484FED87bEf2209E3bA748E11879a#code) |
+| `LoanManager` | [`0xf954359074B83d8EcE8CF5c266A9749208e30d7a`](https://creditcoin-testnet.blockscout.com/address/0xf954359074B83d8EcE8CF5c266A9749208e30d7a#code) |
+| `CreditImporterASC` | [`0xF3154Fe52444b4F6f833eF1873E734f60f713259`](https://creditcoin-testnet.blockscout.com/address/0xF3154Fe52444b4F6f833eF1873E734f60f713259#code) |
 | `MockSPACE` | [`0x95457A6F26a9170B7e54136C4Fd932Af92d1730d`](https://creditcoin-testnet.blockscout.com/address/0x95457A6F26a9170B7e54136C4Fd932Af92d1730d#code) |
 | `MockSpaceStaking` | [`0x06d5357E532EB6973BB699b3B63E57039D0D9d85`](https://creditcoin-testnet.blockscout.com/address/0x06d5357E532EB6973BB699b3B63E57039D0D9d85#code) |
-| `SpaceCreditLine` | [`0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805`](https://creditcoin-testnet.blockscout.com/address/0x02d0eEcA39fD124a1E2dE8Cb050f89219aaf5805#code) |
+| `SpaceCreditLine` | [`0x65A38BfCB9a5741097aa78F1acAf5f05d3bC908E`](https://creditcoin-testnet.blockscout.com/address/0x65A38BfCB9a5741097aa78F1acAf5f05d3bC908E#code) |
 | `MockPenguinSwapRouter` | [`0x2127CAdecd947df2B93b92E675820309b256f103`](https://creditcoin-testnet.blockscout.com/address/0x2127CAdecd947df2B93b92E675820309b256f103#code) |
 
-All verified. `CreditRegistry`/`CreditImporterASC` were redeployed once when the registry's
-`authorizedReporters` change shipped, since the previous registry had no way to authorize a second
-consumer contract. `LoanManager` was redeployed a second time, on its own, when PenguinSwap
-liquidation support shipped — `LendingPool`/`SettlementVault`/`IUSDC` kept their original addresses
-throughout and were just re-pointed at each new `LoanManager` (`pool.setLoanManager` /
-`vault.setLoanManager`) in turn; the prior `LoanManager`'s registry reporter grant was explicitly
-revoked (`pnpm revoke-reporter:cc3`) rather than left dangling. Pool still seeded with 50,000 iUSDC
-from the deployer. `registry.importerASC()` and `importer.attestorOf(1)` confirmed live to point at
-`CreditImporterASC` and `HanaCreditAttestor` (Sepolia) respectively — a real cross-chain import can
-be submitted against this deployment today (any history imported against a *previous* registry no
-longer applies to the live contract and would need re-importing).
+All verified. `CreditRegistry`, `LoanManager`, `CreditImporterASC`, and `SpaceCreditLine` have each
+been redeployed more than once during this pivot: first for the registry's `authorizedReporters`
+change, again for PenguinSwap liquidation support, and again for the `assetDebt` partitioning fix
+below (a real bug found via live testing, not a test artifact) — `LendingPool`/`SettlementVault`/
+`IUSDC` kept their original addresses throughout and were just re-pointed at each new `LoanManager`
+(`pool.setLoanManager` / `vault.setLoanManager`) in turn; each prior `LoanManager`'s registry
+reporter grant was explicitly revoked (`pnpm revoke-reporter:cc3`) rather than left dangling. Pool
+still seeded with 50,000 iUSDC from the deployer. `registry.importerASC()` and
+`importer.attestorOf(1)` confirmed live to point at `CreditImporterASC` and `HanaCreditAttestor`
+(Sepolia) respectively — a real cross-chain import can be submitted against this deployment today
+(any history imported against a *previous* registry no longer applies to the live contract and
+would need re-importing).
+
+**A real bug found and fixed via live testing, not just unit tests:** `CreditRegistry` tracked
+outstanding debt in one field shared across every asset. Live-testing the full demo flow on CC3
+(drawing a SPACE credit line, then trying to originate a BNPL loan on the same wallet) surfaced
+that an 18-decimal SPACE draw's raw amount (~1e21) completely dwarfed a 6-decimal iUSDC limit
+(~1e9) in that shared field, driving `getAvailableCredit(iUSDC)` to zero regardless of real iUSDC
+debt — directly undermining the "two independent reference apps" claim. Fixed by partitioning debt
+per-asset (`CreditRegistry.assetDebt(user, asset)`) and gating the score's volume signal to a
+single `accountingAsset` (iUSDC) rather than summing raw amounts across incompatible decimal
+scales. Two regression tests cover it: `CreditRegistry.t.ts` at the registry level, and
+`SpaceCreditLine.t.ts` end-to-end through the real `LoanManager` + `SpaceCreditLine` contracts.
 
 Scripted smoke tests pass against this live deployment:
-- `pnpm smoke:cc3` — faucet → deposit → originate an `OVERCOLLATERALIZED` loan → repay. Re-run
-  against the redeployed `LoanManager` — passes.
+- `pnpm smoke:cc3` — faucet → deposit → originate an `OVERCOLLATERALIZED` loan → repay (faucet
+  cooldowns permitting; verified via a direct origination/repay using an existing balance instead).
 - `pnpm smoke:spacecreditline:cc3` — faucet → openLine → wait for real on-chain staking yield →
   repayFromYield, confirmed reducing principal on live CC3 blocks.
 
@@ -62,8 +74,9 @@ Scripted smoke tests pass against this live deployment:
 ```bash
 pnpm install --ignore-workspace   # or from the repo root once every package has deps: pnpm install
 pnpm build                        # hardhat compile
-pnpm test                         # 57 tests: registry, pool, vault, loan lifecycle x4 types, importer x4 checks,
-                                   # SpaceCreditLine + MockSpaceStaking, PenguinSwap liquidation
+pnpm test                         # 59 tests: registry (incl. cross-asset debt independence), pool, vault,
+                                   # loan lifecycle x4 types, importer x4 checks, SpaceCreditLine +
+                                   # MockSpaceStaking, PenguinSwap liquidation
 pnpm coverage                     # istanbul coverage report
 
 pnpm node                         # local Hardhat node (separate terminal)
