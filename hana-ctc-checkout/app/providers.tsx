@@ -12,7 +12,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme()}>{children}</RainbowKitProvider>
+        {/* RainbowKit ships its own blue. Point it at the Hana tokens so the connect button and
+          its modal don't read as a second brand sitting inside the app. */}
+      <RainbowKitProvider
+        theme={darkTheme({
+          accentColor: "#7C5CFF",
+          accentColorForeground: "#FFFFFF",
+          borderRadius: "small",
+          fontStack: "system",
+          overlayBlur: "small",
+        })}
+      >
+        {children}
+      </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

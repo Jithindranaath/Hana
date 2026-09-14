@@ -10,6 +10,7 @@ import { SUPPORTED_CHAIN_ID, wagmiConfig } from "@/lib/wagmi";
 import { CreditRegistry, MockSPACE, MockSpaceStaking, SpaceCreditLine } from "@/lib/contracts";
 import { formatTxError } from "@/lib/errors";
 import { getYieldRepaidHistory, YieldRepaidEvent } from "@/lib/creditLineHistory";
+import { Card, Chip, ErrorState, Stat } from "@/components/ui";
 
 export default function CreditLinePage() {
   const { address, isConnected } = useAccount();
@@ -18,13 +19,16 @@ export default function CreditLinePage() {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-16 space-y-6">
-        <h1 className="text-2xl font-semibold">SPACE credit line</h1>
-        <p className="text-slate-400 max-w-md mx-auto">
-          Reference app #2: a DePIN node-operator credit line, drawn against the same score that
-          powers Hana BNPL. Connect your wallet to open one.
+      <div className="mx-auto max-w-xl py-16 text-center">
+        <Chip tone="accent" dot className="mb-5">
+          Reference application #2
+        </Chip>
+        <h1 className="text-2xl font-semibold tracking-tight2">SPACE credit line</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-fg-muted">
+          A DePIN node-operator credit line, drawn against the same score that powers Hana BNPL —
+          and serviced by staking yield instead of your own capital.
         </p>
-        <div className="flex justify-center">
+        <div className="mt-7 flex justify-center">
           <ConnectButton />
         </div>
       </div>
@@ -33,15 +37,21 @@ export default function CreditLinePage() {
 
   if (chainId !== SUPPORTED_CHAIN_ID) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-slate-400">Hana runs on Creditcoin CC3 Testnet.</p>
-        <button
-          onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
-          disabled={switching}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {switching ? "Switching..." : "Switch to CC3 Testnet"}
-        </button>
+      <div className="mx-auto max-w-md py-16">
+        <Card accent className="space-y-4 text-center">
+          <Chip tone="warn" dot>
+            Wrong network
+          </Chip>
+          <p className="text-sm text-fg-muted">Hana runs on Creditcoin CC3 Testnet.</p>
+          <button
+            onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
+            disabled={switching}
+            aria-busy={switching}
+            className="btn btn-primary w-full"
+          >
+            {switching ? "Switching…" : "Switch to CC3 Testnet"}
+          </button>
+        </Card>
       </div>
     );
   }
@@ -201,127 +211,159 @@ function CreditLine({ address }: { address: `0x${string}` }) {
     }
   }
 
+  const busyLabel = (k: typeof busy, idle: string, active: string) => (busy === k ? active : idle);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Chip tone="accent" dot className="mb-3">
+            Reference application #2
+          </Chip>
+          <h1 className="text-xl font-semibold tracking-tight2">SPACE credit line</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-fg-muted">
+            Same registry, same score, an entirely different credit product from BNPL. This is the
+            SpaceRouter Credit Line from Creditcoin&apos;s published roadmap — credit for DePIN node
+            operators, serviced from staking yield rather than outside capital.
+          </p>
+        </div>
+      </div>
+
+      <Card accent className="motion-safe:animate-fade-rise p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs text-fg-muted">SPACE credit limit</p>
+            <p className="mt-1 flex items-baseline gap-2">
+              <span className="mono text-3xl font-semibold tracking-tight2 gradient-text">
+                {fmt(limit.data)}
+              </span>
+              <span className="text-xs text-fg-subtle">SPACE</span>
+            </p>
+          </div>
+          <p className="max-w-xs text-xs text-fg-subtle">
+            Sourced from{" "}
+            <Link href="/" className="text-fg-muted underline underline-offset-2 hover:text-fg">
+              your Hana credit score
+            </Link>{" "}
+            — the very same number that sizes your iUSDC BNPL limit. One registry, two products.
+          </p>
+        </div>
+      </Card>
+
       <div>
-        <h1 className="text-2xl font-semibold">SPACE credit line</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Reference app #2. Same registry, same score, a completely different credit product from
-          BNPL: this is the SpaceRouter Credit Line from Creditcoin&apos;s published roadmap — a
-          credit line for DePIN node operators, serviced from staking yield instead of outside
-          capital.
-        </p>
+        <h2 className="mb-3 text-sm font-medium">Your position</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card><Stat label="Principal outstanding" value={fmt(principal)} unit="SPACE" size="sm" /></Card>
+          <Card><Stat label="Interest owed" value={fmt(interestOwed)} unit="SPACE" size="sm" /></Card>
+          <Card><Stat label="Staked on your behalf" value={fmt(stakedPrincipal)} unit="SPACE" size="sm" sub="You never custody the principal" /></Card>
+          <Card>
+            <Stat label="Accrued yield, unclaimed" value={fmt(pendingYield)} unit="SPACE" size="sm" tone={pendingYield > 0n ? "pos" : undefined} />
+          </Card>
+          <Card>
+            <Stat
+              label="Yield applied to debt, lifetime"
+              value={history === null ? <span className="skeleton inline-block h-5 w-20 align-middle" /> : fmt(totalYieldAppliedToDebt)}
+              unit="SPACE"
+              size="sm"
+              tone="pos"
+            />
+          </Card>
+          <Card>
+            <p className="text-xs text-fg-muted">Projected payoff</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-fg">
+              {!hasDebt
+                ? "No outstanding debt."
+                : payoffBlocks !== null
+                  ? <><span className="mono font-semibold">~{payoffBlocks.toLocaleString()}</span> blocks at the current rate</>
+                  : "Yield won’t outpace interest at this rate — draw less, or wait for a rate change."}
+            </p>
+          </Card>
+        </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 p-5 space-y-2">
-        <p className="text-slate-400 text-sm">
-          SPACE credit limit —{" "}
-          <Link href="/" className="text-indigo-400 hover:text-indigo-300">
-            sourced from your Hana credit score
-          </Link>
-          , the same score that sizes your BNPL limit
-        </p>
-        <p className="text-2xl font-semibold">{fmt(limit.data)} SPACE</p>
-      </div>
+      {error ? <ErrorState title="Transaction didn’t go through" detail={error} /> : null}
 
-      <div className="grid grid-cols-2 gap-4">
-        <Stat label="Principal outstanding" value={fmt(principal)} suffix="SPACE" />
-        <Stat label="Interest owed" value={fmt(interestOwed)} suffix="SPACE" />
-        <Stat label="Staked (auto)" value={fmt(stakedPrincipal)} suffix="SPACE" />
-        <Stat label="Accrued yield, unclaimed" value={fmt(pendingYield)} suffix="SPACE" />
-        <Stat
-          label="Yield applied to debt, lifetime"
-          value={history === null ? "..." : fmt(totalYieldAppliedToDebt)}
-          suffix="SPACE"
-        />
-      </div>
-
-      <div className="rounded-lg border border-slate-800 p-4">
-        <p className="text-slate-400 text-xs">Projected payoff</p>
-        <p className="text-sm mt-1">
-          {!hasDebt
-            ? "No outstanding debt."
-            : payoffBlocks !== null
-              ? `~${payoffBlocks.toLocaleString()} blocks at the current yield rate`
-              : "Yield at the current rate won't outpace interest — draw less, or wait for a rate change."}
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-sm">
-        <p className="text-slate-400 text-sm">Open / draw more</p>
-        <p className="text-slate-600 text-xs">
-          Drawn SPACE is auto-staked into MockSpaceStaking on your behalf — you never custody the
-          principal.
-        </p>
-        <input
-          type="number"
-          placeholder="Amount (SPACE)"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-        />
-        <button
-          onClick={openLine}
-          disabled={!amount || busy !== null}
-          className="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {busy === "open" ? "Opening..." : "Open / draw"}
-        </button>
-      </div>
-
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-sm">
-        <p className="text-slate-400 text-sm">Claim &amp; repay</p>
-        <p className="text-slate-600 text-xs">
-          Claims accrued staking yield and applies it to your debt — interest first, then
-          principal. Any yield left over once your debt is clear pays straight to you.
-        </p>
-        <button
-          onClick={repayFromYield}
-          disabled={!open || pendingYield === 0n || busy !== null}
-          className="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {busy === "repay" ? "Claiming..." : "Claim yield & repay"}
-        </button>
-        {canClose && (
-          <button
-            onClick={closeLine}
-            disabled={busy !== null}
-            className="w-full rounded border border-slate-700 px-4 py-2 text-sm font-medium hover:border-slate-500 disabled:opacity-50"
-          >
-            {busy === "close" ? "Closing..." : "Close line — unstake everything"}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="space-y-3">
+          <div>
+            <h3 className="text-sm font-medium">Draw</h3>
+            <p className="mt-1 text-xs leading-relaxed text-fg-muted">
+              Drawn SPACE is auto-staked on your behalf in the same transaction.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="draw-amount" className="block text-xs text-fg-muted">
+              Amount
+            </label>
+            <div className="relative">
+              <input
+                id="draw-amount"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                autoComplete="off"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input mono pr-16"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-fg-subtle">
+                SPACE
+              </span>
+            </div>
+          </div>
+          <button onClick={openLine} disabled={!amount || busy !== null} aria-busy={busy === "open"} className="btn btn-primary w-full">
+            {busyLabel("open", "Draw and stake", "Drawing…")}
           </button>
-        )}
-      </div>
+        </Card>
 
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-sm">
-        <p className="text-slate-400 text-sm">Testnet SPACE faucet</p>
-        <p className="text-slate-600 text-xs">Wallet balance: {fmt(spaceBalance.data)} SPACE</p>
-        <button
-          onClick={faucet}
-          disabled={busy !== null}
-          className="w-full rounded border border-slate-700 px-4 py-2 text-sm font-medium hover:border-slate-500 disabled:opacity-50"
-        >
-          {busy === "faucet" ? "Requesting..." : "Get testnet SPACE"}
-        </button>
-      </div>
+        <Card className="space-y-3">
+          <div>
+            <h3 className="text-sm font-medium">Claim &amp; repay</h3>
+            <p className="mt-1 text-xs leading-relaxed text-fg-muted">
+              Applies claimed yield to interest first, then principal. Anything left over once the
+              debt is clear pays straight to you.
+            </p>
+          </div>
+          <button
+            onClick={repayFromYield}
+            disabled={!open || pendingYield === 0n || busy !== null}
+            aria-busy={busy === "repay"}
+            className="btn btn-primary w-full"
+          >
+            {busyLabel("repay", "Claim yield and repay", "Claiming…")}
+          </button>
+          {canClose ? (
+            <button onClick={closeLine} disabled={busy !== null} aria-busy={busy === "close"} className="btn btn-secondary w-full">
+              {busyLabel("close", "Close line and unstake", "Closing…")}
+            </button>
+          ) : null}
+        </Card>
 
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+        <Card className="space-y-3">
+          <div>
+            <h3 className="text-sm font-medium">Testnet faucet</h3>
+            <p className="mt-1 text-xs text-fg-muted">
+              Wallet balance{" "}
+              <span className="mono text-fg">{fmt(spaceBalance.data)}</span> SPACE
+            </p>
+          </div>
+          <button onClick={faucet} disabled={busy !== null} aria-busy={busy === "faucet"} className="btn btn-secondary w-full">
+            {busyLabel("faucet", "Get testnet SPACE", "Requesting…")}
+          </button>
+        </Card>
+      </div>
     </div>
   );
 }
 
+/** Every SPACE figure in this view shares a decimal precision — ragged column widths
+ *  (4,114.2857 next to 194.4) read as unconsidered. Sub-unit dust keeps more digits so a
+ *  small accrual is still visible rather than rounding to 0.00. */
 function fmt(value: unknown): string {
-  if (value === undefined || value === null) return "-";
-  return Number(formatUnits(value as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 4 });
-}
-
-function Stat({ label, value, suffix }: { label: string; value: string; suffix: string }) {
-  return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <p className="text-slate-500 text-xs">{label}</p>
-      <p className="text-lg font-semibold mt-1">
-        {value} <span className="text-slate-500 text-sm font-normal">{suffix}</span>
-      </p>
-    </div>
-  );
+  if (value === undefined || value === null) return "—";
+  const n = Number(formatUnits(value as bigint, 18));
+  const digits = n > 0 && n < 1 ? 4 : 2;
+  return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }

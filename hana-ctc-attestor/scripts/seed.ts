@@ -55,20 +55,34 @@ async function main() {
   console.log(`Excellent-history wallet: ${wallets.excellent.address}`);
   console.log(`Thin-history wallet:      ${wallets.thin.address}`);
 
+  // The demo wallets pay their own gas for snapshot() (it's sent by the subject, not the owner).
+  // Top them up from the deployer rather than blocking on a faucet round-trip — the deployer is
+  // already funded on every network we seed on, and this keeps the script self-sufficient.
+  const GAS_TOPUP = ethers.parseEther("0.008");
   let anyUnfunded = false;
   for (const [label, addr] of [
     ["excellent", wallets.excellent.address],
     ["thin", wallets.thin.address],
   ] as const) {
     const balance = await provider.getBalance(addr);
-    if (balance === 0n) {
+    if (balance > 0n) continue;
+
+    const ownerBalance = await provider.getBalance(owner.address);
+    if (ownerBalance < GAS_TOPUP * 2n) {
       anyUnfunded = true;
-      console.warn(`\n⚠ ${label} wallet ${addr} has 0 ETH on ${net} — fund it from a faucet, then re-run.`);
+      console.warn(
+        `\n⚠ ${label} wallet ${addr} has 0 ETH and the deployer (${ethers.formatEther(ownerBalance)} ETH)` +
+          ` can't cover a top-up — fund either address from a faucet, then re-run.`
+      );
+      continue;
     }
+
+    console.log(`Funding ${label} wallet ${addr} with ${ethers.formatEther(GAS_TOPUP)} ETH for gas...`);
+    await (await owner.sendTransaction({ to: addr, value: GAS_TOPUP })).wait();
   }
   if (anyUnfunded) {
     console.warn("\nSeeding histories now (owner tx, no gas needed from the demo wallets), but");
-    console.warn("snapshot() below will fail for any unfunded wallet.");
+    console.warn("snapshot() below will fail for any wallet still unfunded.");
   }
 
   const now = BigInt(Math.floor(Date.now() / 1000));

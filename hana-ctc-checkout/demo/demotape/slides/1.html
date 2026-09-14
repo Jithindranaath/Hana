@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The problem</title>
+<link rel="stylesheet" href="slides.css" />
+</head>
+<body>
+<div class="slide-no anim-fade" style="--d:180ms">1 / 4</div>
+<div class="slide">
+  <span class="eyebrow anim" style="--d:120ms"><span class="dot"></span>The problem</span>
+
+  <h1 class="anim" style="--d:260ms">Credit history<br /><span class="grad">doesn't travel.</span></h1>
+
+  <p class="lede anim" style="--d:440ms">
+    A wallet with years of perfect repayment on Ethereum arrives on any other chain as a
+    complete stranger. The record exists — it just can't be proved anywhere else.
+  </p>
+
+  <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:28px;margin-top:52px;max-width:960px">
+    <div class="card anim" style="--d:620ms">
+      <div class="label">Ethereum &middot; the same wallet</div>
+      <div class="value mono" style="font-size:24px;white-space:nowrap">14 loans &middot; 40 on time</div>
+      <div class="sub">Two years of history, all verifiable</div>
+    </div>
+
+    <!-- The severed link: it draws in, then the break fades up through it. -->
+    <svg width="120" height="60" viewBox="0 0 120 60" fill="none" aria-hidden="true">
+      <path class="anim-draw" style="--len:46;--d:900ms" d="M4 30 H50" stroke="#2A3142" stroke-width="2.5" stroke-linecap="round"/>
+      <path class="anim-draw" style="--len:46;--d:900ms" d="M70 30 H116" stroke="#2A3142" stroke-width="2.5" stroke-linecap="round"/>
+      <g class="anim-fade" style="--d:1500ms">
+        <path d="M52 18 L68 42 M68 18 L52 42" stroke="#FB7185" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+    </svg>
+
+    <div class="card anim" style="--d:780ms">
+      <div class="label">Creditcoin &middot; day one</div>
+      <div class="value mono" style="color:var(--neg)">300</div>
+      <div class="sub">The floor. No history on this chain.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

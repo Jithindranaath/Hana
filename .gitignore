@@ -45,3 +45,10 @@ npm-debug.log*
 pnpm-debug.log*
 .vscode/
 .idea/
+
+# generated at demo time from .demo-wallets.json (public address only)
+hana-ctc-checkout/demo/demotape/wallet-init.generated.js
+brand/
+planning/
+hana-ctc-pivot.md
+WORKFLOW.md

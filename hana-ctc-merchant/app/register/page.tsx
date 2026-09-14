@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveCreds } from "@/lib/clientAuth";
+import { Card, Chip, ErrorState, Field, CopyText } from "@/components/ui";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -34,27 +35,31 @@ export default function RegisterPage() {
 
   if (revealed) {
     return (
-      <div className="max-w-md space-y-4">
-        <h1 className="text-xl font-semibold">Save your API keys</h1>
-        <p className="text-slate-400 text-sm">
-          The client secret is shown <strong>once</strong> — we only store its hash. It's already
-          saved in this browser for you, but write it down if you'll need it elsewhere (e.g. a
-          server calling the bill API directly).
-        </p>
-        <div className="rounded-lg border border-slate-800 p-4 space-y-2 font-mono text-sm break-all">
-          <div>
-            <span className="text-slate-500">Client ID: </span>
-            {revealed.clientId}
-          </div>
-          <div>
-            <span className="text-slate-500">Client secret: </span>
-            {revealed.clientSecret}
-          </div>
+      <div className="mx-auto max-w-lg space-y-5 py-6">
+        <div>
+          <Chip tone="warn" dot className="mb-3">
+            Shown once
+          </Chip>
+          <h1 className="text-xl font-semibold tracking-tight2">Save your API keys</h1>
+          <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+            We store only a hash of the secret, so this is the only time it’s visible. It’s already
+            saved in this browser — write it down if a server will call the bill API directly.
+          </p>
         </div>
-        <button
-          onClick={() => router.push("/")}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500"
-        >
+
+        <Card accent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-fg-muted">Client ID</span>
+            <CopyText value={revealed.clientId} />
+          </div>
+          <div className="hairline" aria-hidden />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-fg-muted">Client secret</span>
+            <CopyText value={revealed.clientSecret} />
+          </div>
+        </Card>
+
+        <button onClick={() => router.push("/")} className="btn btn-primary">
           Continue to dashboard
         </button>
       </div>
@@ -62,35 +67,34 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="max-w-sm space-y-4">
-      <h1 className="text-xl font-semibold">Register your business</h1>
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <div className="space-y-3">
-        <label className="block text-sm">
-          Business name
+    <div className="mx-auto max-w-md space-y-5 py-6">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight2">Register your business</h1>
+        <p className="mt-2 text-sm text-fg-muted">
+          You’ll get API keys for creating bills and a payout address for settled funds.
+        </p>
+      </div>
+
+      {error ? <ErrorState title="Registration failed" detail={error} /> : null}
+
+      <Card className="space-y-4">
+        <Field label="Business name">
+          <input className="input" autoComplete="organization" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Supply Co." />
+        </Field>
+        <Field label="Payout address" hint="On CC3 Testnet — receives settled funds from the vault.">
           <input
-            className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label className="block text-sm">
-          Payout address (CC3, receives settled funds)
-          <input
-            className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm font-mono"
-            placeholder="0x..."
+            className="input mono"
+            placeholder="0x…"
+            autoComplete="off"
+            spellCheck={false}
             value={payoutAddress}
             onChange={(e) => setPayoutAddress(e.target.value)}
           />
-        </label>
-        <button
-          onClick={submit}
-          disabled={busy || !name || !payoutAddress}
-          className="w-full rounded bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {busy ? "Registering..." : "Register"}
+        </Field>
+        <button onClick={submit} disabled={busy || !name || !payoutAddress} aria-busy={busy} className="btn btn-primary w-full">
+          {busy ? "Registering…" : "Register"}
         </button>
-      </div>
+      </Card>
     </div>
   );
 }

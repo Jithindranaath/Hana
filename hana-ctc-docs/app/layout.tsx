@@ -1,42 +1,37 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import { DocsNav } from "@/components/DocsNav";
+
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Hana Docs",
   description: "Architecture, the Attestcoin write-up, deployed addresses, and an integration guide for Hana.",
 };
 
-const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/integrate", label: "Build on Hana" },
-  { href: "/architecture", label: "Architecture" },
-  { href: "/attestcoin", label: "Attestcoin" },
-  { href: "/addresses", label: "Addresses" },
-];
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100">
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <body className="min-h-screen font-sans">
         <div className="flex">
-          <aside className="w-56 shrink-0 border-r border-slate-800 min-h-screen px-4 py-6 hidden sm:block">
-            <Link href="/" className="font-semibold text-lg block mb-6">
-              Hana Docs
+          <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-line px-4 py-6 sm:block">
+            <Link href="/" className="mb-7 flex items-center gap-2 rounded-ctl text-[15px] font-semibold tracking-tight2">
+              <span className="h-5 w-5 rounded-md bg-grad-accent shadow-glow-accent" aria-hidden />
+              Hana
+              <span className="text-fg-subtle">Docs</span>
             </Link>
-            <nav className="space-y-1">
-              {NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded px-3 py-2 text-sm text-slate-300 hover:bg-slate-900 hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
+            <DocsNav />
+            <div className="mt-7 border-t border-line pt-5">
+              <span className="chip border-warn/30 bg-warn/10 text-warn">CC3 Testnet</span>
+            </div>
           </aside>
-          <main className="flex-1 max-w-3xl px-6 sm:px-10 py-10">{children}</main>
+
+          <main className="surface-mesh min-h-screen flex-1">
+            <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-10">{children}</div>
+          </main>
         </div>
       </body>
     </html>

@@ -9,6 +9,16 @@ import { LoanStatus, LoanType } from "@hana/shared";
 import { SUPPORTED_CHAIN_ID, wagmiConfig } from "@/lib/wagmi";
 import { CreditRegistry, IUSDC, LoanManager } from "@/lib/contracts";
 import { formatTxError } from "@/lib/errors";
+import { Card, Chip, CardSkeleton, EmptyState, ErrorState, Tone } from "@/components/ui";
+
+/** iUSDC is a 6-decimal token, but raw formatUnits output (85.772501) next to a rounded
+ *  figure (114) reads as unconsidered. Every money figure in this view shares 2 decimals. */
+function usdc(value: bigint): string {
+  return Number(formatUnits(value, 6)).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 const LOAN_TYPE_LABELS: Record<number, string> = {
   [LoanType.INSTALLMENT]: "Installments",
@@ -55,24 +65,32 @@ export default function DashboardPage() {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-16 space-y-6">
-        <p className="text-slate-400">Connect your wallet to see your loans.</p>
-        <ConnectButton />
+      <div className="mx-auto max-w-md py-20 text-center">
+        <p className="text-sm text-fg-muted">Connect your wallet to see your loans.</p>
+        <div className="mt-6 flex justify-center">
+          <ConnectButton />
+        </div>
       </div>
     );
   }
 
   if (chainId !== SUPPORTED_CHAIN_ID) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-slate-400">Hana runs on Creditcoin CC3 Testnet.</p>
-        <button
-          onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
-          disabled={switching}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {switching ? "Switching..." : "Switch to CC3 Testnet"}
-        </button>
+      <div className="mx-auto max-w-md py-16">
+        <Card accent className="space-y-4 text-center">
+          <Chip tone="warn" dot>
+            Wrong network
+          </Chip>
+          <p className="text-sm text-fg-muted">Hana runs on Creditcoin CC3 Testnet.</p>
+          <button
+            onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
+            disabled={switching}
+            aria-busy={switching}
+            className="btn btn-primary w-full"
+          >
+            {switching ? "Switching…" : "Switch to CC3 Testnet"}
+          </button>
+        </Card>
       </div>
     );
   }
@@ -81,22 +99,40 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Your loans</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight2">Your loans</h1>
+        <p className="mt-1 text-sm text-fg-muted">
+          Reference application #1 — retail BNPL, originated against your imported credit limit.
+        </p>
+      </div>
 
-      {scoreDelta && (
-        <div className="rounded-lg border border-emerald-800 bg-emerald-950/30 p-4 text-center">
-          <p className="text-emerald-400 font-medium">
-            Score: {scoreDelta.before} → {scoreDelta.after} (
+      {scoreDelta ? (
+        <Card accent className="motion-safe:animate-fade-rise flex items-center justify-between gap-4 border-pos/25 bg-pos/5">
+          <div>
+            <p className="text-xs text-fg-muted">On-time payment recorded on-chain</p>
+            <p className="mt-1 flex items-baseline gap-2">
+              <span className="mono text-lg text-fg-muted">{scoreDelta.before}</span>
+              <span className="text-fg-subtle" aria-hidden>&rarr;</span>
+              <span className="mono text-2xl font-semibold text-pos">{scoreDelta.after}</span>
+            </p>
+          </div>
+          <Chip tone="pos">
             {scoreDelta.after >= scoreDelta.before ? "+" : ""}
-            {scoreDelta.after - scoreDelta.before})
-          </p>
-        </div>
-      )}
+            {scoreDelta.after - scoreDelta.before} points
+          </Chip>
+        </Card>
+      ) : null}
 
       {loanIds.isLoading ? (
-        <p className="text-slate-400">Loading loans...</p>
+        <div className="space-y-4">
+          <CardSkeleton rows={2} />
+          <CardSkeleton rows={2} />
+        </div>
       ) : ids.length === 0 ? (
-        <p className="text-slate-500">No loans yet.</p>
+        <EmptyState
+          title="No loans yet"
+          body="Check out on the demo store with Hana and your first installment plan will appear here."
+        />
       ) : (
         <div className="space-y-4">
           {ids.map((id) => (
@@ -162,7 +198,7 @@ function LoanCard({
     args: address ? [address, LoanManager.address] : undefined,
   });
 
-  if (loan.isLoading || !loan.data) return <div className="rounded-lg border border-slate-800 p-5 text-slate-500">Loading...</div>;
+  if (loan.isLoading || !loan.data) return <CardSkeleton rows={2} />;
 
   const l = loan.data as any;
   const status = Number(l.status);
@@ -214,65 +250,86 @@ function LoanCard({
     }
   }
 
+  const statusTone: Tone =
+    status === LoanStatus.COMPLETED ? "pos" : isOverdue ? "neg" : status === LoanStatus.ACTIVE ? "accent" : "neutral";
+  const dueNow = (nextPayment.data as bigint) ?? totalDue;
+
   return (
-    <div className={`rounded-lg border p-5 space-y-3 ${isOverdue ? "border-red-800" : "border-slate-800"}`}>
-      <div className="flex items-center justify-between">
-        <p className="font-medium">{LOAN_TYPE_LABELS[loanType]}</p>
-        <span
-          className={`text-xs px-2 py-1 rounded-full border ${
-            status === LoanStatus.COMPLETED
-              ? "border-emerald-800 text-emerald-400"
-              : status === LoanStatus.ACTIVE
-                ? isOverdue
-                  ? "border-red-800 text-red-400"
-                  : "border-indigo-800 text-indigo-400"
-                : "border-slate-700 text-slate-400"
-          }`}
-        >
+    <Card hover className={isOverdue ? "border-neg/40" : undefined}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">{LOAN_TYPE_LABELS[loanType]}</p>
+          <p className="mt-0.5 text-xs text-fg-subtle">Loan #{loanId.toString()}</p>
+        </div>
+        <Chip tone={statusTone} dot pulse={status === LoanStatus.ACTIVE && !isOverdue}>
           {isOverdue ? "Overdue" : LOAN_STATUS_LABELS[status]}
-        </span>
+        </Chip>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
         <div>
-          <p className="text-slate-500 text-xs">Principal</p>
-          <p>{formatUnits(l.principal, 6)} iUSDC</p>
+          <dt className="text-xs text-fg-muted">Principal</dt>
+          <dd className="mono mt-1 text-sm">{usdc(l.principal)}</dd>
         </div>
         <div>
-          <p className="text-slate-500 text-xs">Outstanding</p>
-          <p>{formatUnits(l.outstandingPrincipal + l.outstandingInterest, 6)} iUSDC</p>
+          <dt className="text-xs text-fg-muted">Outstanding</dt>
+          <dd className="mono mt-1 text-sm">
+            {usdc(l.outstandingPrincipal + l.outstandingInterest)}
+          </dd>
         </div>
-        {loanType === LoanType.INSTALLMENT && (
+        {loanType === LoanType.INSTALLMENT ? (
           <div>
-            <p className="text-slate-500 text-xs">Installments</p>
-            <p>
-              {Number(l.installmentsPaid)} / {Number(l.installmentCount)} paid
+            <dt className="text-xs text-fg-muted">Installments</dt>
+            <dd className="mt-2 flex items-center gap-2">
+              {/* One pill per installment — paid progress is readable at a glance on video. */}
+              <span className="flex gap-1" aria-hidden>
+                {Array.from({ length: Number(l.installmentCount) }).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={
+                      idx < Number(l.installmentsPaid)
+                        ? "h-1.5 w-4 rounded-full bg-grad-accent-r"
+                        : "h-1.5 w-4 rounded-full bg-surface-3"
+                    }
+                  />
+                ))}
+              </span>
+              <span className="mono text-xs text-fg-muted">
+                {Number(l.installmentsPaid)}/{Number(l.installmentCount)}
+              </span>
+            </dd>
+          </div>
+        ) : null}
+        {nextDueDate > 0 && status === LoanStatus.ACTIVE ? (
+          <div>
+            <dt className="text-xs text-fg-muted">Next due</dt>
+            <dd className={`mono mt-1 text-sm ${isOverdue ? "text-neg" : ""}`}>
+              {new Date(nextDueDate * 1000).toLocaleDateString()}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      {status === LoanStatus.ACTIVE && totalDue > 0n ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <div>
+            <p className="text-xs text-fg-muted">Due now</p>
+            <p className="mt-0.5 flex items-baseline gap-1.5">
+              <span className="mono text-lg font-semibold">{usdc(dueNow)}</span>
+              <span className="text-xs text-fg-subtle">iUSDC</span>
             </p>
           </div>
-        )}
-        {nextDueDate > 0 && status === LoanStatus.ACTIVE && (
-          <div>
-            <p className="text-slate-500 text-xs">Next due</p>
-            <p className={isOverdue ? "text-red-400" : ""}>{new Date(nextDueDate * 1000).toLocaleDateString()}</p>
-          </div>
-        )}
-      </div>
-
-      {status === LoanStatus.ACTIVE && totalDue > 0n && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-sm text-slate-400">
-            Due now: {formatUnits((nextPayment.data as bigint) ?? totalDue, 6)} iUSDC
-          </p>
-          <button
-            onClick={pay}
-            disabled={paying}
-            className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {paying ? "Paying..." : "Pay"}
+          <button onClick={pay} disabled={paying} aria-busy={paying} className="btn btn-primary">
+            {paying ? "Paying…" : "Pay installment"}
           </button>
         </div>
-      )}
-      {error && <p className="text-red-400 text-xs">{error}</p>}
-    </div>
+      ) : null}
+
+      {error ? (
+        <div className="mt-4">
+          <ErrorState title="Payment didn’t go through" detail={error} onRetry={pay} />
+        </div>
+      ) : null}
+    </Card>
   );
 }

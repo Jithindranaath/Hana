@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Why it's a primitive</title>
+<link rel="stylesheet" href="slides.css" />
+</head>
+<body>
+<div class="slide-no anim-fade" style="--d:180ms">4 / 4</div>
+<div class="slide">
+  <span class="eyebrow anim" style="--d:120ms"><span class="dot"></span>Why it's a primitive</span>
+
+  <h1 class="anim" style="--d:260ms">One registry.<br /><span class="grad">Every credit product.</span></h1>
+
+  <p class="lede anim" style="--d:430ms">
+    A registry only one app reads is plumbing. So Hana ships two — deliberately different shapes
+    of credit, drawing on the same imported score, with zero coupling between them.
+  </p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:44px;max-width:1000px">
+    <div class="card anim" style="--d:640ms">
+      <div class="eyebrow" style="font-size:12px;padding:3px 10px 3px 8px"><span class="dot"></span>Reference app #1</div>
+      <div style="font-size:23px;font-weight:600;margin-top:14px;letter-spacing:-0.02em">Retail BNPL</div>
+      <div class="sub" style="font-size:15px;line-height:1.55;margin-top:8px">
+        A shopper splits a purchase into instalments, funded by a real lending pool and settled
+        through a vault.
+      </div>
+      <div class="mono" style="margin-top:16px;font-size:15px;color:var(--aqua)">iUSDC</div>
+    </div>
+
+    <div class="card anim" style="--d:790ms">
+      <div class="eyebrow" style="font-size:12px;padding:3px 10px 3px 8px"><span class="dot"></span>Reference app #2</div>
+      <div style="font-size:23px;font-weight:600;margin-top:14px;letter-spacing:-0.02em">DePIN credit line</div>
+      <div class="sub" style="font-size:15px;line-height:1.55;margin-top:8px">
+        A node operator draws SPACE, auto-stakes it, and repays from staking yield instead of
+        their own capital.
+      </div>
+      <div class="mono" style="margin-top:16px;font-size:15px;color:var(--aqua)">SPACE</div>
+    </div>
+  </div>
+
+  <div class="card card-accent anim" style="--d:980ms;margin-top:20px;max-width:1000px;display:flex;align-items:center;gap:16px">
+    <span class="dot pulse" style="--d:1400ms;width:8px;height:8px;border-radius:999px;background:var(--pos);flex:none"></span>
+    <div style="font-size:17px;line-height:1.55;color:var(--fg-muted)">
+      Both are just entries in <span class="mono" style="color:var(--fg)">authorizedReporters</span> calling the same two functions.
+      <span style="color:var(--fg)">A third contract is the same three lines of code</span> — no partnership, no permission.
+    </div>
+  </div>
+</div>
+</body>
+</html>

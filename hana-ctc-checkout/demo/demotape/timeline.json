@@ -1,0 +1,70 @@
+{
+  "voiceId": "",
+  "styled": "/Users/dawg/Movies/DemoTape/Hana Network \u2014 full demo.mp4",
+  "scenes": [
+    {
+      "at": 0.0,
+      "say": "A wallet can build years of perfect repayment history on Ethereum, and still arrive on any other chain as a complete stranger."
+    },
+    {
+      "at": 10.4,
+      "say": "Moving that record is the easy half. Making it trustworthy is the hard half \u2014 a signature proves key control, a bridge asks you to trust a committee, and an oracle puts back the middleman you were removing."
+    },
+    {
+      "at": 22.7,
+      "say": "So Hana imports the record and has Creditcoin verify it on chain \u2014 a Merkle inclusion proof checked by the Attestcoin precompile. The result is one public view call that any contract can read."
+    },
+    {
+      "at": 36.1,
+      "say": "And a registry only one app reads is just plumbing. So there are two, deliberately different \u2014 retail buy-now-pay-later, and a DePIN node operator credit line \u2014 on the same score, with no coupling between them."
+    },
+    {
+      "at": 48.95,
+      "say": "This is Hana \u2014 a cross-chain credit primitive on Creditcoin. The whole integration surface is one view call: getCreditLimit, for any address and any asset."
+    },
+    {
+      "at": 62.35,
+      "say": "Nothing here is a mockup. Every contract is deployed and verified on Creditcoin's CC3 testnet, and this page reads the addresses straight from the deployment record."
+    },
+    {
+      "at": 74.65,
+      "say": "Here's the checkout app, with a wallet connected that has a real repayment history \u2014 but that history is on Ethereum, not on Creditcoin."
+    },
+    {
+      "at": 87.05,
+      "say": "And there's the score \u2014 seven eighty six. That number was not seeded here. It came from fourteen completed loans and forty on-time payments on Ethereum Sepolia, proved onto Creditcoin by a Merkle inclusion proof and verified by a precompile. No oracle signed off on it."
+    },
+    {
+      "at": 105.35,
+      "say": "And this is the point of a primitive. One score, two completely unrelated credit products \u2014 retail buy-now-pay-later in iUSDC, and a DePIN node operator credit line in SPACE. Same registry, no coupling."
+    },
+    {
+      "at": 119.75,
+      "say": "Let me actually spend it. Here's a demo storefront \u2014 I'll add a pair of headphones to the cart."
+    },
+    {
+      "at": 131.05,
+      "say": "Open the cart, and check out with Hana."
+    },
+    {
+      "at": 141.45,
+      "say": "Four instalments, underwritten against the imported limit. This is a real transaction \u2014 it's being signed and broadcast to CC3 right now."
+    },
+    {
+      "at": 162.55,
+      "say": "The loan is live on chain \u2014 four instalments, the first one due, and the money already moved into the settlement vault."
+    },
+    {
+      "at": 174.85,
+      "say": "Now the second product, on the same wallet and the same score. A credit line in SPACE, drawn and staked, that repays itself out of staking yield instead of my capital."
+    },
+    {
+      "at": 189.25,
+      "say": "Claiming that yield pays the debt down. Again \u2014 real transaction, real staking yield, real block."
+    },
+    {
+      "at": 205.55,
+      "say": "Two applications, one registry, and the interface is public. Any contract on Creditcoin can underwrite against this today \u2014 no partnership, no permission, no oracle subscription."
+    }
+  ]
+}

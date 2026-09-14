@@ -1,0 +1,67 @@
+{
+  "//": "Title deck recorded as its own take, then concatenated in front of the product demo. Same viewport, padding and wallpaper as demo-hana.json so the two segments join without a visual seam. No clicks — a slide shouldn't pan, so maxZoom is 1.0 and the cursor is hidden.",
+
+  "url": "http://localhost:3009/1.html",
+  "capture": "frames",
+  "captureFps": 30,
+  "captureQuality": 88,
+  "viewport": { "x": 0, "y": 0, "width": 1440, "height": 900 },
+  "demotapeBin": "/Applications/DemoTape.app/Contents/MacOS/DemoTape",
+
+  "voiceId": "",
+  "showCursor": false,
+  "osClick": false,
+  "stepPauseMs": 0,
+  "tailMs": 1200,
+  "maxAttempts": 2,
+  "verify": false,
+
+  "recipe": {
+    "useBackground": true,
+    "backgroundImage": "/Users/dawg/Pictures/wallpapers/Ultrawide/wallpaperflare.com_wallpaper (3).jpg",
+    "padding": 64,
+    "cornerRadius": 22,
+    "maxZoom": 1.0,
+    "drawCursor": false,
+    "showShortcuts": false
+  },
+
+  "scenes": [
+    {
+      "vo": "A wallet can build years of perfect repayment history on Ethereum, and still arrive on any other chain as a complete stranger.",
+      "dur": 10,
+      "steps": [
+        { "action": "goto", "url": "http://localhost:3009/1.html" },
+        { "action": "waitFor", "selector": "text=doesn't travel." }
+      ],
+      "expect": { "visible": "text=The floor. No history on this chain." }
+    },
+    {
+      "vo": "Moving that record is the easy half. Making it trustworthy is the hard half — a signature proves key control, a bridge asks you to trust a committee, and an oracle puts back the middleman you were removing.",
+      "dur": 12,
+      "steps": [
+        { "action": "goto", "url": "http://localhost:3009/2.html" },
+        { "action": "waitFor", "selector": "text=Trusting it isn't." }
+      ],
+      "expect": { "visible": "text=Post it with an oracle" }
+    },
+    {
+      "vo": "So Hana imports the record and has Creditcoin verify it on chain — a Merkle inclusion proof checked by the Attestcoin precompile. The result is one public view call that any contract can read.",
+      "dur": 13,
+      "steps": [
+        { "action": "goto", "url": "http://localhost:3009/3.html" },
+        { "action": "waitFor", "selector": "text=A proof," }
+      ],
+      "expect": { "visible": "text=the entire integration surface" }
+    },
+    {
+      "vo": "And a registry only one app reads is just plumbing. So there are two, deliberately different — retail buy-now-pay-later, and a DePIN node operator credit line — on the same score, with no coupling between them.",
+      "dur": 12,
+      "steps": [
+        { "action": "goto", "url": "http://localhost:3009/4.html" },
+        { "action": "waitFor", "selector": "text=Every credit product." }
+      ],
+      "expect": { "visible": "text=Reference app #2" }
+    }
+  ]
+}

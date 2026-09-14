@@ -1,0 +1,38 @@
+{
+  "//": "Narration for 'Hana Network - full demo.mp4'. Cloned from Dakshith's own 6.55s reference via Qwen3VoiceClone on the Base model. No instruct anywhere. Lines 7, 10 and 15 were re-taken across four seeds each and selected on measured end-of-line pitch, so every line resolves downward; \"Thank you.\" is its own clip with a 1.4s beat before it.",
+  "voice": {
+    "mode": "clone",
+    "ref_audio": "dakshith_ref_short.wav",
+    "ref_text": "So, we are attacking a 31.6 trillion cross-border market.",
+    "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "language": "English",
+    "seed": 42
+  },
+  "instruct": "",
+  "lines": [
+    "Every lender asks one question: can I trust this borrower? On a new chain, nobody can answer.",
+    "A signature proves nothing. A bridge needs a committee. An oracle brings back the middleman you were trying to remove.",
+    "So Hana doesn't ask anyone to vouch. We import the record itself, and let Creditcoin verify it on chain with a cryptographic proof.",
+    "And we didn't build one app on top of it. We built two, deliberately different, so the registry has to behave like a primitive.",
+    "Everything from here is live. Real contracts, deployed and verified on Creditcoin's test network. Nothing in this demo is a rendering.",
+    "These addresses aren't copied onto a slide. The page reads them straight from the deployment record, so they cannot drift.",
+    "Here's a wallet that has never borrowed on Creditcoin. But it has years of lending history on Ethereum.",
+    "Seven eighty-six. Nobody typed that in. It came from fourteen completed loans and forty on-time payments on Ethereum, proved across by a Merkle inclusion proof, and verified by a precompile. No oracle. No committee.",
+    "And this is what makes it a business. One score, two unrelated products. Retail instalments in dollars, and a node operator credit line in a staking token.",
+    "So let's spend it. A real purchase, underwritten against that imported limit.",
+    "No card. No application. No bank in the middle. Just pay with Hana.",
+    "Four instalments. And this is a real transaction, signed and broadcast to Creditcoin while you watch. Not a mock. Watch the available credit fall, because the loan genuinely drew against it. That decision was made by a contract reading one number.",
+    "The loan is live on chain. Four instalments, the first one due, and the merchant settled from a vault.",
+    "Now the second product. Same wallet, same score, completely different risk. A credit line that stakes itself and repays out of yield.",
+    "Claiming that yield pays the debt down. Real transaction, real yield, a real block. This is the credit line Creditcoin published on its own roadmap.",
+    "Two applications, one registry, one public interface. Any contract on Creditcoin can underwrite against this today. That is a primitive.",
+    "Thank you."
+  ],
+  "seeds_per_line": {
+    "7": 2024,
+    "10": 7,
+    "15": 2024,
+    "15b": 555,
+    "default": 42
+  }
+}

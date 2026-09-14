@@ -1,48 +1,58 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { CartDrawer } from "@/components/CartDrawer";
 import { useCart } from "@/lib/cart";
 import { PRODUCTS } from "@/lib/products";
 
 export default function HomePage() {
   const cart = useCart();
+  const reduce = useReducedMotion();
 
   return (
-    <div>
+    <div className="surface-mesh min-h-screen">
       <CartDrawer />
-      <header className="max-w-5xl mx-auto px-6 pt-10 pb-6">
-        <h1 className="text-3xl font-semibold">Hana Demo Store</h1>
-        <p className="text-slate-400 mt-2 max-w-lg">
-          A reference storefront. Checkout is powered by Hana — pay in installments backed by
-          your on-chain credit history, no bank required.
+
+      <header className="relative mx-auto max-w-5xl px-4 pb-8 pt-14 md:px-6">
+        <span className="chip border-accent/30 bg-accent/10 text-accent-hi">Reference storefront</span>
+        <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.1] tracking-display md:text-5xl">
+          Buy it now.<br />
+          <span className="gradient-text">Pay with your reputation.</span>
+        </h1>
+        <p className="mt-4 max-w-md text-[15px] leading-relaxed text-fg-muted">
+          Checkout here runs on Hana — split any purchase into instalments backed by your on-chain
+          credit history. No bank, no card, no application.
         </p>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 pb-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <main className="relative mx-auto grid max-w-5xl grid-cols-1 gap-4 px-4 pb-24 sm:grid-cols-2 md:px-6 lg:grid-cols-3">
         {PRODUCTS.map((product, i) => (
-          <motion.div
+          <motion.article
             key={product.id}
-            initial={{ opacity: 0, y: 16 }}
+            initial={reduce ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            whileHover={{ y: -4 }}
-            className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col"
+            transition={{ duration: 0.22, delay: reduce ? 0 : i * 0.04, ease: [0, 0, 0.2, 1] }}
+            className="card card-hover flex flex-col p-5"
           >
-            <div className="text-5xl mb-4">{product.emoji}</div>
-            <h2 className="font-medium">{product.name}</h2>
-            <p className="text-slate-500 text-sm mt-1 flex-1">{product.description}</p>
-            <div className="flex items-center justify-between mt-4">
-              <span className="font-semibold">{product.price} iUSDC</span>
-              <motion.button
-                whileTap={{ scale: 0.92 }}
+            <div className="mb-4 grid h-20 place-items-center rounded-ctl bg-grad-accent-soft text-4xl" aria-hidden>
+              {product.emoji}
+            </div>
+            <h2 className="text-sm font-medium">{product.name}</h2>
+            <p className="mt-1 flex-1 text-xs leading-relaxed text-fg-muted">{product.description}</p>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <p className="flex items-baseline gap-1">
+                <span className="mono text-lg font-semibold">{product.price}</span>
+                <span className="text-xs text-fg-subtle">iUSDC</span>
+              </p>
+              <button
                 onClick={() => cart.add(product.id)}
-                className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500"
+                className="btn btn-secondary"
+                aria-label={`Add ${product.name} to cart`}
               >
                 Add to cart
-              </motion.button>
+              </button>
             </div>
-          </motion.div>
+          </motion.article>
         ))}
       </main>
     </div>

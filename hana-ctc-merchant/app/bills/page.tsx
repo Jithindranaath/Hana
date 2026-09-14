@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authedFetch, loadCreds, StoredCreds } from "@/lib/clientAuth";
+import { Card, Chip, Tone, EmptyState, ErrorState, Field, CopyText, PageSkeleton } from "@/components/ui";
 
 interface Bill {
   billHash: string;
@@ -71,107 +72,91 @@ export default function BillsPage() {
     }
   }
 
-  if (loading || !creds) return <p className="text-slate-400">Loading...</p>;
+  if (loading || !creds) return <PageSkeleton />;
+
+  const statusTone = (status: string): Tone =>
+    status === "settled" ? "pos" : status === "originated" ? "warn" : "neutral";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Bills</h1>
-        <p className="text-slate-400 text-sm mt-1">{creds.name}</p>
+        <h1 className="text-xl font-semibold tracking-tight2">Bills</h1>
+        <p className="mt-1 text-sm text-fg-muted">{creds.name}</p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-lg">
-        <h2 className="font-medium">New bill</h2>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm">
-            Amount (iUSDC)
-            <input
-              className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="49.99"
-            />
-          </label>
-          <label className="text-sm">
-            Reference
-            <input
-              className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="order-1042"
-            />
-          </label>
-          <label className="text-sm col-span-2">
-            Item name
-            <input
-              className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              placeholder="Wireless mouse"
-            />
-          </label>
-          <label className="text-sm col-span-2">
-            Release type
-            <select
-              className="mt-1 w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-              value={releaseType}
-              onChange={(e) => setReleaseType(e.target.value as typeof releaseType)}
-            >
-              <option value="IMMEDIATE">Immediate</option>
-              <option value="TIMELOCK">Timelock</option>
-              <option value="CONDITIONAL">Conditional</option>
-            </select>
-          </label>
+      <Card accent className="max-w-2xl space-y-4">
+        <h2 className="text-sm font-medium">New bill</h2>
+        {error ? <ErrorState title="Couldn’t create the bill" detail={error} /> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Amount (iUSDC)">
+            <input className="input mono" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="49.99" />
+          </Field>
+          <Field label="Reference">
+            <input className="input" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="order-1042" />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Item name">
+              <input className="input" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Wireless mouse" />
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Release type" hint="When the vault releases funds to your payout address.">
+              <select
+                className="input"
+                value={releaseType}
+                onChange={(e) => setReleaseType(e.target.value as typeof releaseType)}
+              >
+                <option value="IMMEDIATE">Immediate</option>
+                <option value="TIMELOCK">Timelock</option>
+                <option value="CONDITIONAL">Conditional</option>
+              </select>
+            </Field>
+          </div>
         </div>
-        <button
-          onClick={createBill}
-          disabled={creating || !amount || !reference}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {creating ? "Creating..." : "Create bill"}
+        <button onClick={createBill} disabled={creating || !amount || !reference} aria-busy={creating} className="btn btn-primary">
+          {creating ? "Creating…" : "Create bill"}
         </button>
-      </div>
+      </Card>
 
       <div>
-        <h2 className="font-medium mb-3">All bills ({bills.length})</h2>
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-medium">All bills</h2>
+          <span className="mono text-xs text-fg-subtle">{bills.length}</span>
+        </div>
         {bills.length === 0 ? (
-          <p className="text-slate-500 text-sm">No bills yet.</p>
+          <EmptyState title="No bills yet" body="Create one above, or let the demo storefront create it for you at checkout." />
         ) : (
-          <div className="overflow-x-auto">
+          <Card className="overflow-x-auto p-0">
             <table className="w-full text-sm">
-              <thead className="text-slate-500 text-left border-b border-slate-800">
-                <tr>
-                  <th className="py-2 pr-4">Bill</th>
-                  <th className="py-2 pr-4">Reference</th>
-                  <th className="py-2 pr-4">Amount</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Checkout link</th>
+              <thead>
+                <tr className="border-b border-line text-left">
+                  {["Bill", "Reference", "Amount", "Status", "Checkout link"].map((h) => (
+                    <th key={h} className="px-4 py-3 text-xs font-medium text-fg-muted">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {bills.map((b) => (
-                  <tr key={b.billHash} className="border-b border-slate-900">
-                    <td className="py-2 pr-4 font-mono text-xs">{b.billHash.slice(0, 10)}...</td>
-                    <td className="py-2 pr-4">{b.reference}</td>
-                    <td className="py-2 pr-4">
-                      {b.amount} {b.currency}
+                  <tr key={b.billHash} className="border-b border-line/60 last:border-0">
+                    <td className="px-4 py-3">
+                      <CopyText value={`${b.billHash.slice(0, 10)}…`} className="-ml-1.5" />
                     </td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={
-                          b.status === "settled"
-                            ? "text-emerald-400"
-                            : b.status === "originated"
-                              ? "text-amber-400"
-                              : "text-slate-400"
-                        }
-                      >
+                    <td className="px-4 py-3 text-fg-muted">{b.reference}</td>
+                    <td className="mono whitespace-nowrap px-4 py-3">
+                      {b.amount} <span className="text-fg-subtle">{b.currency}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Chip tone={statusTone(b.status)} dot>
                         {b.status}
-                      </span>
+                      </Chip>
                     </td>
-                    <td className="py-2 pr-4">
-                      <a href={b.checkoutUrl} className="text-indigo-400 hover:underline break-all">
+                    <td className="max-w-xs px-4 py-3">
+                      <a
+                        href={b.checkoutUrl}
+                        className="mono break-all text-xs text-accent-hi underline underline-offset-2 hover:text-fg"
+                      >
                         {b.checkoutUrl}
                       </a>
                     </td>
@@ -179,7 +164,7 @@ export default function BillsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </div>
     </div>

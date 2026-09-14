@@ -3,8 +3,44 @@ import { Prose } from "@/components/Prose";
 
 export default function OverviewPage() {
   return (
+    <>
+      <header className="mb-12">
+        <span className="chip border-accent/30 bg-accent/10 text-accent-hi">
+          Cross-chain credit primitive
+        </span>
+        <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-display">
+          One registry.<br />
+          <span className="gradient-text">Every credit product on Creditcoin.</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-fg-muted">
+          Import a wallet&apos;s lending history from another chain, verified on-chain by a proof
+          rather than an oracle, and read it from any contract with a single view call.
+        </p>
+
+        {/* The whole integration surface, shown before a word of prose. */}
+        <div className="card card-accent mt-7 overflow-x-auto p-4">
+          <pre className="mono text-xs leading-relaxed text-fg-muted">
+            <code>
+              <span className="text-fg-subtle">{"// any Creditcoin contract, no permission required"}</span>
+              {"\n"}
+              <span className="text-accent-hi">interface</span> <span className="text-fg">ICreditRegistry</span> {"{\n  "}
+              <span className="text-accent-hi">function</span> <span className="text-aqua">getCreditLimit</span>
+              {"(address user, address asset)\n    external view returns (uint256);\n}"}
+            </code>
+          </pre>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/integrate" className="btn btn-primary">
+            Build on Hana
+          </Link>
+          <Link href="/addresses" className="btn btn-secondary">
+            Deployed addresses
+          </Link>
+        </div>
+      </header>
+
     <Prose>
-      <h1>Hana Network</h1>
       <p className="lead">
         Hana is a cross-chain credit primitive for Creditcoin. <code>CreditRegistry</code> imports
         a wallet&apos;s lending history from other chains — verified synchronously by the{" "}
@@ -95,5 +131,6 @@ export default function OverviewPage() {
       <h2>Hackathon</h2>
       <p>Built for BUIDL CTC 2026 Fall (DoraHacks) — Track: DeFi.</p>
     </Prose>
+    </>
   );
 }

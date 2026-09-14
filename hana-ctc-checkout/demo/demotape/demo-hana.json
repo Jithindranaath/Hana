@@ -1,0 +1,335 @@
+{
+  "//": "Silent take \u2014 `vo` holds the narration to lay later with `driver.mjs narrate`. Everything on screen is real: a real imported credit score on CC3 Testnet, and two genuinely signed, broadcast transactions (loan origination and a yield repayment) via demo/demotape/signer.mjs.",
+  "url": "http://localhost:3004/",
+  "capture": "frames",
+  "captureFps": 30,
+  "captureQuality": 88,
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "width": 1440,
+    "height": 900
+  },
+  "demotapeBin": "/Applications/DemoTape.app/Contents/MacOS/DemoTape",
+  "initScripts": [
+    "wallet-init.generated.js"
+  ],
+  "voiceId": "",
+  "moveMs": 560,
+  "typeMs": 55,
+  "stepPauseMs": 800,
+  "actionLeadFraction": 0.55,
+  "tailMs": 2600,
+  "maxAttempts": 1,
+  "verify": false,
+  "recipe": {
+    "useBackground": true,
+    "backgroundImage": "/Users/dawg/Pictures/wallpapers/Ultrawide/wallpaperflare.com_wallpaper (3).jpg",
+    "padding": 64,
+    "cornerRadius": 22,
+    "maxZoom": 1.7,
+    "stiffness": 120,
+    "damping": 22,
+    "showShortcuts": false
+  },
+  "scenes": [
+    {
+      "vo": "This is Hana \u2014 a cross-chain credit primitive on Creditcoin. The whole integration surface is one view call: getCreditLimit, for any address and any asset.",
+      "dur": 13,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "text=One registry."
+        },
+        {
+          "action": "wait",
+          "ms": 700
+        },
+        {
+          "action": "click",
+          "selector": "code:has-text('getCreditLimit')"
+        }
+      ],
+      "expect": {
+        "visible": "text=Every credit product on Creditcoin."
+      }
+    },
+    {
+      "vo": "Nothing here is a mockup. Every contract is deployed and verified on Creditcoin's CC3 testnet, and this page reads the addresses straight from the deployment record.",
+      "dur": 12,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3004/addresses"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Deployed addresses"
+        },
+        {
+          "action": "wait",
+          "ms": 600
+        },
+        {
+          "action": "click",
+          "selector": "a:has-text('0x53E25073d4C4611EBf444ceb1f4b9340ed3D3de1')"
+        }
+      ],
+      "expect": {
+        "visible": "code:has-text('CreditRegistry')"
+      }
+    },
+    {
+      "vo": "Here's the checkout app, with a wallet connected that has a real repayment history \u2014 but that history is on Ethereum, not on Creditcoin.",
+      "dur": 12,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3001/"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Credit profile",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "click",
+          "selector": "text=Ethereum history linked"
+        }
+      ],
+      "expect": {
+        "visible": "text=Credit profile",
+        "timeout": 30000
+      }
+    },
+    {
+      "vo": "And there's the score \u2014 seven eighty six. That number was not seeded here. It came from fourteen completed loans and forty on-time payments on Ethereum Sepolia, proved onto Creditcoin by a Merkle inclusion proof and verified by a precompile. No oracle signed off on it.",
+      "dur": 18,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "text=786",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 900
+        },
+        {
+          "action": "click",
+          "selector": "text=786"
+        }
+      ],
+      "expect": {
+        "visible": "text=Ethereum history linked"
+      }
+    },
+    {
+      "vo": "And this is the point of a primitive. One score, two completely unrelated credit products \u2014 retail buy-now-pay-later in iUSDC, and a DePIN node operator credit line in SPACE. Same registry, no coupling.",
+      "dur": 14,
+      "steps": [
+        {
+          "action": "scroll",
+          "y": 520
+        },
+        {
+          "action": "wait",
+          "ms": 800
+        },
+        {
+          "action": "click",
+          "selector": "text=DePIN credit line"
+        }
+      ],
+      "expect": {
+        "visible": "text=Two products, one registry"
+      }
+    },
+    {
+      "vo": "Let me actually spend it. Here's a demo storefront \u2014 I'll add a pair of headphones to the cart.",
+      "dur": 11,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3003/"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Pay with your reputation."
+        },
+        {
+          "action": "wait",
+          "ms": 700
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label='Add Noise-Cancelling Headphones to cart']"
+        }
+      ],
+      "expect": {
+        "visible": "text=Cart"
+      }
+    },
+    {
+      "vo": "Open the cart, and check out with Hana.",
+      "dur": 10,
+      "steps": [
+        {
+          "action": "click",
+          "selector": "button:has-text('Cart')"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Your cart"
+        },
+        {
+          "action": "wait",
+          "ms": 600
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Pay with Hana')"
+        }
+      ],
+      "expect": {
+        "urlContains": "/pay/",
+        "timeout": 30000
+      }
+    },
+    {
+      "vo": "Four instalments, underwritten against the imported limit. This is a real transaction \u2014 it's being signed and broadcast to CC3 right now.",
+      "dur": 18,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "text=Choose a plan",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 700
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Pay in 4')"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Payment plan started",
+          "timeout": 120000
+        }
+      ],
+      "expect": {
+        "visible": "text=Payment plan started",
+        "timeout": 120000
+      }
+    },
+    {
+      "vo": "The loan is live on chain \u2014 four instalments, the first one due, and the money already moved into the settlement vault.",
+      "dur": 12,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3001/dashboard"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Your loans",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 1200
+        },
+        {
+          "action": "click",
+          "selector": "text=Installments"
+        }
+      ],
+      "expect": {
+        "visible": "text=Due now",
+        "timeout": 30000
+      }
+    },
+    {
+      "vo": "Now the second product, on the same wallet and the same score. A credit line in SPACE, drawn and staked, that repays itself out of staking yield instead of my capital.",
+      "dur": 14,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3001/credit-line"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=SPACE credit line",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 1200
+        },
+        {
+          "action": "click",
+          "selector": "text=Accrued yield, unclaimed"
+        }
+      ],
+      "expect": {
+        "visible": "text=Staked on your behalf",
+        "timeout": 30000
+      }
+    },
+    {
+      "vo": "Claiming that yield pays the debt down. Again \u2014 real transaction, real staking yield, real block.",
+      "dur": 16,
+      "steps": [
+        {
+          "action": "click",
+          "selector": "button:has-text('Claim yield and repay')"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Yield applied to debt, lifetime",
+          "timeout": 120000
+        }
+      ],
+      "expect": {
+        "visible": "text=Your position",
+        "timeout": 120000
+      }
+    },
+    {
+      "vo": "Two applications, one registry, and the interface is public. Any contract on Creditcoin can underwrite against this today \u2014 no partnership, no permission, no oracle subscription.",
+      "dur": 13,
+      "steps": [
+        {
+          "action": "goto",
+          "url": "http://localhost:3004/integrate"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=Build on Hana",
+          "timeout": 30000
+        },
+        {
+          "action": "wait",
+          "ms": 900
+        },
+        {
+          "action": "click",
+          "selector": "code:has-text('getCreditLimit')"
+        }
+      ],
+      "expect": {
+        "visible": "text=Build on Hana"
+      }
+    }
+  ]
+}

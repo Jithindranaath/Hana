@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authedFetch, clearCreds, loadCreds, saveCreds, StoredCreds } from "@/lib/clientAuth";
+import { Card, ErrorState, Field, CopyText, PageSkeleton } from "@/components/ui";
 
 export default function HomePage() {
   const [creds, setCreds] = useState<StoredCreds | null>(null);
@@ -28,7 +29,7 @@ export default function HomePage() {
       .finally(() => setChecked(true));
   }, []);
 
-  if (!checked) return <p className="text-slate-400">Loading...</p>;
+  if (!checked) return <PageSkeleton />;
 
   if (!creds) {
     return <PasteKeysOrRegister error={error} onSaved={setCreds} />;
@@ -37,33 +38,39 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{creds.name}</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Client ID: <code className="text-slate-300">{creds.clientId}</code>
-        </p>
-        <p className="text-slate-400 text-sm">
-          Payout address: <code className="text-slate-300">{creds.payoutAddress}</code>
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight2">{creds.name}</h1>
+        <p className="mt-1 text-sm text-fg-muted">Signed in on this device.</p>
       </div>
-      <div className="flex gap-4">
-        <Link href="/bills" className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500">
+
+      <Card accent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-fg-muted">Client ID</span>
+          <CopyText value={creds.clientId} />
+        </div>
+        <div className="hairline" aria-hidden />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-fg-muted">Payout address</span>
+          <CopyText value={creds.payoutAddress} />
+        </div>
+      </Card>
+
+      <div className="flex flex-wrap gap-3">
+        <Link href="/bills" className="btn btn-primary">
           Manage bills
         </Link>
-        <Link
-          href="/settlements"
-          className="rounded border border-slate-700 px-4 py-2 text-sm font-medium hover:border-slate-500"
-        >
+        <Link href="/settlements" className="btn btn-secondary">
           Settlement history
         </Link>
       </div>
+
       <button
         onClick={() => {
           clearCreds();
           setCreds(null);
         }}
-        className="text-xs text-slate-500 hover:text-slate-300"
+        className="btn btn-ghost -ml-3 text-xs"
       >
-        Sign out (forget stored keys on this device)
+        Sign out and forget these keys
       </button>
     </div>
   );
@@ -100,42 +107,49 @@ function PasteKeysOrRegister({
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Hana Merchant Portal</h1>
-        <p className="text-slate-400 mt-2">
+    <div className="mx-auto max-w-md space-y-6 py-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight2">Merchant portal</h1>
+        <p className="mt-2 text-sm text-fg-muted">
           New here?{" "}
-          <Link href="/register" className="text-indigo-400 hover:underline">
+          <Link href="/register" className="text-accent-hi underline underline-offset-2 hover:text-fg">
             Register your business
           </Link>{" "}
           to get API keys.
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-sm">
-        <h2 className="font-medium">Already have keys?</h2>
-        {(error || formError) && <p className="text-sm text-red-400">{error ?? formError}</p>}
-        <input
-          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-          placeholder="Client ID"
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-        />
-        <input
-          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-          placeholder="Client secret"
-          type="password"
-          value={clientSecret}
-          onChange={(e) => setClientSecret(e.target.value)}
-        />
+      <Card className="space-y-4">
+        <h2 className="text-sm font-medium">Already have keys?</h2>
+        {error || formError ? <ErrorState title="Couldn’t sign you in" detail={error ?? formError ?? undefined} /> : null}
+        <Field label="Client ID">
+          <input
+            className="input mono"
+            placeholder="mch_…"
+            autoComplete="username"
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+          />
+        </Field>
+        <Field label="Client secret" hint="Stored only in this browser.">
+          <input
+            className="input mono"
+            type="password"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            value={clientSecret}
+            onChange={(e) => setClientSecret(e.target.value)}
+          />
+        </Field>
         <button
           onClick={submit}
           disabled={busy || !clientId || !clientSecret}
-          className="w-full rounded bg-indigo-600 px-3 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+          aria-busy={busy}
+          className="btn btn-primary w-full"
         >
-          {busy ? "Checking..." : "Continue"}
+          {busy ? "Checking…" : "Continue"}
         </button>
-      </div>
+      </Card>
     </div>
   );
 }

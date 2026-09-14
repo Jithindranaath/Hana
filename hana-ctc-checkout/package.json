@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
-    "demo:autopilot": "tsx demo/autopilot.ts"
+    "demo:autopilot": "tsx demo/autopilot.ts",
+    "demo:fund": "tsx demo/fund-demo-wallets.ts"
   },
   "dependencies": {
     "@hana/shared": "workspace:*",

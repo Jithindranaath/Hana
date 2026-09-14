@@ -9,6 +9,7 @@ import { SUPPORTED_CHAIN_ID, wagmiConfig } from "@/lib/wagmi";
 import { IUSDC, LendingPool } from "@/lib/contracts";
 import { formatTxError } from "@/lib/errors";
 import { getRepaidHistory, RepaidEvent } from "@/lib/lendHistory";
+import { Card, Chip, ErrorState, Stat } from "@/components/ui";
 
 export default function LendPage() {
   const { address, isConnected } = useAccount();
@@ -136,117 +137,163 @@ export default function LendPage() {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-16 space-y-6">
-        <h1 className="text-2xl font-semibold">Lend iUSDC</h1>
-        <p className="text-slate-400">Connect your wallet to deposit into the pool.</p>
-        <ConnectButton />
+      <div className="mx-auto max-w-md py-20 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight2">Lend iUSDC</h1>
+        <p className="mt-3 text-sm text-fg-muted">
+          Supply the pool that funds every Hana loan and earn the borrow rate.
+        </p>
+        <div className="mt-7 flex justify-center">
+          <ConnectButton />
+        </div>
       </div>
     );
   }
 
   if (chainId !== SUPPORTED_CHAIN_ID) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-slate-400">Hana runs on Creditcoin CC3 Testnet.</p>
-        <button
-          onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
-          disabled={switching}
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {switching ? "Switching..." : "Switch to CC3 Testnet"}
-        </button>
+      <div className="mx-auto max-w-md py-16">
+        <Card accent className="space-y-4 text-center">
+          <Chip tone="warn" dot>
+            Wrong network
+          </Chip>
+          <p className="text-sm text-fg-muted">Hana runs on Creditcoin CC3 Testnet.</p>
+          <button
+            onClick={() => switchChain({ chainId: SUPPORTED_CHAIN_ID })}
+            disabled={switching}
+            aria-busy={switching}
+            className="btn btn-primary w-full"
+          >
+            {switching ? "Switching…" : "Switch to CC3 Testnet"}
+          </button>
+        </Card>
       </div>
     );
   }
 
   const maxInterest = history?.length ? Math.max(...history.map((h) => Number(formatUnits(h.interest, 6)))) : 1;
+  const utilPct = utilizationBps.data !== undefined ? Number(utilizationBps.data) / 100 : 0;
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Lend iUSDC</h1>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Stat label="Total supplied" value={fmt(totalAssets.data)} suffix="iUSDC" />
-        <Stat label="Total borrowed" value={fmt(totalBorrowed.data)} suffix="iUSDC" />
-        <Stat label="Utilization" value={bps(utilizationBps.data)} suffix="%" />
-        <Stat label="Borrow APR" value={bps(borrowRateBps.data)} suffix="%" />
-      </div>
-
-      <div className="rounded-lg border border-slate-800 p-5 space-y-2">
-        <p className="text-slate-400 text-sm">Your position</p>
-        <p className="text-2xl font-semibold">{fmt(positionValue.data)} iUSDC</p>
-        <p className="text-slate-500 text-xs">
-          {fmt(shareBalance.data)} ipUSDC · 1 ipUSDC = {sharePrice.data ? formatUnits(sharePrice.data as bigint, 6) : "-"} iUSDC
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight2">Lend iUSDC</h1>
+        <p className="mt-1 text-sm text-fg-muted">
+          Every Hana loan is funded from this pool. Depositors earn the borrow rate, scaled by
+          utilisation.
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 p-5 space-y-3 max-w-sm">
-        <input
-          type="number"
-          placeholder="Amount (iUSDC)"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-        />
-        {error && <p className="text-red-400 text-xs">{error}</p>}
-        <div className="flex gap-3">
-          <button
-            onClick={deposit}
-            disabled={!amount || busy !== null}
-            className="flex-1 rounded bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {busy === "deposit" ? "Depositing..." : "Deposit"}
-          </button>
-          <button
-            onClick={withdraw}
-            disabled={!amount || busy !== null}
-            className="flex-1 rounded border border-slate-700 px-4 py-2 text-sm font-medium hover:border-slate-500 disabled:opacity-50"
-          >
-            {busy === "withdraw" ? "Withdrawing..." : "Withdraw"}
-          </button>
-        </div>
-        <p className="text-slate-600 text-xs">Max withdraw: {fmt(maxWithdraw.data)} iUSDC</p>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Card><Stat label="Total supplied" value={fmt(totalAssets.data)} unit="iUSDC" size="sm" /></Card>
+        <Card><Stat label="Total borrowed" value={fmt(totalBorrowed.data)} unit="iUSDC" size="sm" /></Card>
+        <Card>
+          <Stat label="Utilisation" value={bps(utilizationBps.data)} unit="%" size="sm" />
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-2">
+            {/* The curve is gentle to 80% and steep past it — the marker makes the kink visible. */}
+            <div
+              className={utilPct > 80 ? "h-full rounded-full bg-warn" : "h-full rounded-full bg-grad-accent-r"}
+              style={{ width: `${Math.min(100, utilPct)}%` }}
+            />
+          </div>
+        </Card>
+        <Card><Stat label="Borrow APR" value={bps(borrowRateBps.data)} unit="%" size="sm" tone="pos" /></Card>
       </div>
 
-      <div className="rounded-lg border border-slate-800 p-5">
-        <h2 className="font-medium mb-4">Interest paid into the pool</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card accent className="p-6">
+          <p className="text-xs text-fg-muted">Your position</p>
+          <p className="mt-1 flex items-baseline gap-2">
+            <span className="mono text-3xl font-semibold tracking-tight2">{fmt(positionValue.data)}</span>
+            <span className="text-xs text-fg-subtle">iUSDC</span>
+          </p>
+          <p className="mt-2 text-xs text-fg-subtle">
+            <span className="mono">{fmt(shareBalance.data)}</span> ipUSDC &middot; 1 ipUSDC ={" "}
+            <span className="mono">
+              {sharePrice.data ? formatUnits(sharePrice.data as bigint, 6) : "—"}
+            </span>{" "}
+            iUSDC
+          </p>
+        </Card>
+
+        <Card className="space-y-3">
+          <div className="space-y-1.5">
+            <label htmlFor="lend-amount" className="block text-xs text-fg-muted">
+              Amount
+            </label>
+            <div className="relative">
+              <input
+                id="lend-amount"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                autoComplete="off"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input mono pr-16"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-fg-subtle">
+                iUSDC
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={deposit} disabled={!amount || busy !== null} aria-busy={busy === "deposit"} className="btn btn-primary flex-1">
+              {busy === "deposit" ? "Depositing…" : "Deposit"}
+            </button>
+            <button onClick={withdraw} disabled={!amount || busy !== null} aria-busy={busy === "withdraw"} className="btn btn-secondary flex-1">
+              {busy === "withdraw" ? "Withdrawing…" : "Withdraw"}
+            </button>
+          </div>
+          <p className="text-xs text-fg-subtle">
+            Max withdraw <span className="mono text-fg-muted">{fmt(maxWithdraw.data)}</span> iUSDC
+          </p>
+          {error ? <ErrorState title="Transaction didn’t go through" detail={error} /> : null}
+        </Card>
+      </div>
+
+      <Card className="p-6">
+        <h2 className="text-sm font-medium">Interest paid into the pool</h2>
+        <p className="mt-1 text-xs text-fg-muted">Every bar is a real repayment landing on CC3.</p>
         {history === null ? (
-          <p className="text-slate-500 text-sm">Loading history...</p>
+          <div className="mt-5 flex h-32 items-end gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton flex-1" style={{ height: `${30 + ((i * 37) % 60)}%` }} />
+            ))}
+          </div>
         ) : history.length === 0 ? (
-          <p className="text-slate-500 text-sm">No repayments yet.</p>
+          <p className="mt-6 text-sm text-fg-subtle">
+            No repayments yet — the first loan repayment will show up here.
+          </p>
         ) : (
-          <svg viewBox={`0 0 ${history.length * 40} 120`} className="w-full h-32">
+          <svg viewBox={`0 0 ${history.length * 40} 120`} className="mt-5 h-32 w-full" role="img" aria-label="Interest paid into the pool over time">
+            <defs>
+              <linearGradient id="hana-bar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7C5CFF" />
+                <stop offset="100%" stopColor="#22D3EE" />
+              </linearGradient>
+            </defs>
             {history.map((h, i) => {
               const amt = Number(formatUnits(h.interest, 6));
               const height = Math.max(2, (amt / maxInterest) * 100);
               return (
-                <rect key={i} x={i * 40 + 8} y={110 - height} width={24} height={height} rx={2} className="fill-indigo-500" />
+                <rect key={i} x={i * 40 + 8} y={110 - height} width={24} height={height} rx={3} fill="url(#hana-bar)" />
               );
             })}
           </svg>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
 
 function fmt(value: unknown): string {
-  if (value === undefined || value === null) return "-";
+  if (value === undefined || value === null) return "—";
   return Number(formatUnits(value as bigint, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 function bps(value: unknown): string {
-  if (value === undefined || value === null) return "-";
+  if (value === undefined || value === null) return "—";
   return (Number(value) / 100).toFixed(2);
-}
-
-function Stat({ label, value, suffix }: { label: string; value: string; suffix: string }) {
-  return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <p className="text-slate-500 text-xs">{label}</p>
-      <p className="text-lg font-semibold mt-1">
-        {value} <span className="text-slate-500 text-sm font-normal">{suffix}</span>
-      </p>
-    </div>
-  );
 }

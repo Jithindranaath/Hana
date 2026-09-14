@@ -12,6 +12,7 @@ import {
 import { cc3, sepolia } from "@/lib/chains";
 import { CreditRegistry, HanaCreditAttestor } from "@/lib/contracts";
 import { formatTxError } from "@/lib/errors";
+import { Card, Chip, ErrorState, AddressChip } from "@/components/ui";
 
 const WORKER_STATUS_URL = process.env.NEXT_PUBLIC_WORKER_STATUS_URL ?? "http://localhost:8787";
 
@@ -166,115 +167,178 @@ export default function LinkHistoryPage() {
   }, [startedAt, phase]);
 
   if (!isConnected) {
-    return <p className="text-slate-400 text-center py-20">Connect your wallet first.</p>;
+    return (
+      <div className="mx-auto max-w-md py-24 text-center">
+        <p className="text-sm text-fg-muted">Connect your wallet to import a credit history.</p>
+      </div>
+    );
   }
 
   if (phase === "loading") {
-    return <p className="text-slate-400 text-center py-20">Checking import status...</p>;
+    return (
+      <div className="mx-auto max-w-md space-y-3 py-24">
+        <div className="skeleton mx-auto h-3 w-40" />
+        <div className="skeleton mx-auto h-3 w-56" />
+      </div>
+    );
   }
 
   if (phase === "idle") {
     return (
-      <div className="space-y-6 text-center py-10">
-        <h1 className="text-2xl font-semibold">Link your Ethereum history</h1>
-        <p className="text-slate-400 max-w-md mx-auto">
-          We'll ask you to switch to Sepolia and sign one transaction — a snapshot of your lending
-          history there. No funds move. Hana then verifies it cross-chain and your Creditcoin
-          score updates automatically — no further action needed from you.
-        </p>
-        <button
-          onClick={startLinking}
-          className="rounded bg-indigo-600 px-6 py-3 font-medium hover:bg-indigo-500"
-        >
-          Start linking
-        </button>
+      <div className="mx-auto max-w-xl py-10">
+        <Card accent className="p-7 text-center motion-safe:animate-fade-rise">
+          <Chip tone="accent" dot className="mb-5">
+            One signature on Ethereum
+          </Chip>
+          <h1 className="text-2xl font-semibold tracking-tight2">Link your Ethereum history</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-fg-muted">
+            You&apos;ll switch to Sepolia and sign a single transaction — a snapshot of your
+            lending record there. No funds move. Hana proves it on Creditcoin and your score
+            updates on its own.
+          </p>
+          <button onClick={startLinking} className="btn btn-primary mx-auto mt-6 px-6">
+            Start linking
+          </button>
+          <p className="mt-4 text-xs text-fg-subtle">Takes about 9 minutes, almost all of it Ethereum finality.</p>
+        </Card>
       </div>
     );
   }
 
   if (phase === "error" || phase === "FAILED") {
     return (
-      <div className="text-center py-10 space-y-4">
-        <p className="text-red-400 max-w-md mx-auto">{error ?? "Import failed. You can safely try again."}</p>
-        <button
-          onClick={() => {
+      <div className="mx-auto max-w-md py-14">
+        <ErrorState
+          title="Import didn't complete"
+          detail={error ?? "Nothing was lost — starting again is safe and costs one more signature."}
+          onRetry={() => {
             setPhase("idle");
             setError(null);
             setSepoliaTxHash(undefined);
           }}
-          className="rounded border border-slate-700 px-4 py-2 text-sm hover:border-slate-500"
-        >
-          Try again
-        </button>
+        />
       </div>
     );
   }
 
   if (["connect-sepolia", "signing", "sepolia-confirming", "switch-back"].includes(phase)) {
     const copy: Record<string, string> = {
-      "connect-sepolia": "Switching to Sepolia...",
-      signing: "Confirm the snapshot transaction in your wallet...",
-      "sepolia-confirming": "Waiting for the snapshot to be mined on Sepolia...",
-      "switch-back": "Switching back to Creditcoin CC3...",
+      "connect-sepolia": "Switching your wallet to Sepolia…",
+      signing: "Confirm the snapshot transaction in your wallet.",
+      "sepolia-confirming": "Waiting for the snapshot to be mined on Sepolia…",
+      "switch-back": "Switching back to Creditcoin CC3…",
     };
     return (
-      <div className="text-center py-16 space-y-4">
-        <div className="mx-auto h-8 w-8 rounded-full border-2 border-slate-700 border-t-indigo-400 animate-spin" />
-        <p className="text-slate-300">{copy[phase]}</p>
-        {sepoliaTxHash && <p className="text-xs text-slate-500 font-mono break-all">{sepoliaTxHash}</p>}
+      <div className="mx-auto max-w-md py-20 text-center">
+        <span className="relative mx-auto flex h-2.5 w-2.5">
+          <span className="absolute inset-0 rounded-full bg-accent motion-safe:animate-ring-out" aria-hidden />
+          <span className="relative h-2.5 w-2.5 rounded-full bg-accent" aria-hidden />
+        </span>
+        <p className="mt-5 text-sm text-fg">{copy[phase]}</p>
+        {sepoliaTxHash ? (
+          <div className="mt-3 flex justify-center">
+            <AddressChip address={sepoliaTxHash} href={`https://sepolia.etherscan.io/tx/${sepoliaTxHash}`} />
+          </div>
+        ) : null}
       </div>
     );
   }
 
   if (phase === "CONFIRMED") {
     return (
-      <div className="text-center py-16 space-y-6">
-        <h1 className="text-2xl font-semibold text-emerald-400">History imported!</h1>
-        <p className="text-slate-400">Your Creditcoin credit score has been updated.</p>
-        <Link
-          href="/"
-          className="inline-block rounded bg-indigo-600 px-6 py-3 font-medium hover:bg-indigo-500"
-        >
-          View your new score
-        </Link>
+      <div className="mx-auto max-w-lg py-16">
+        <Card accent className="p-8 text-center motion-safe:animate-fade-rise">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-pos/30 bg-pos/10">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-pos" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight2">History imported</h1>
+          <p className="mt-2 text-sm text-fg-muted">
+            A Merkle proof of your Sepolia record was verified on Creditcoin. Your score has been
+            recomputed on-chain.
+          </p>
+          <Link href="/" className="btn btn-primary mx-auto mt-6 px-6">
+            View your new score
+          </Link>
+        </Card>
       </div>
     );
   }
 
-  // SEEN / ATTEST_WAIT / PROOF_FETCH / SUBMIT — pending timeline
+  // SEEN / ATTEST_WAIT / PROOF_FETCH / SUBMIT — the long wait.
   const stepIndex = TIMELINE_STEPS.findIndex((s) => s.key === phase);
+  // Measured p50 across three live runs is ~9 minutes; the bar is capped at 95% so it can
+  // never claim to be finished before the chain actually says so.
+  const progressPct = Math.min(95, (elapsedSec / 560) * 100);
+
   return (
-    <div className="space-y-8 py-6">
+    <div className="mx-auto max-w-xl space-y-6 py-8">
       <div className="text-center">
-        <h1 className="text-xl font-semibold">Linking your history...</h1>
-        <p className="text-slate-400 text-sm mt-2">
-          This takes about 9 minutes, mostly Ethereum's own finality — not anything Hana
-          controls. Elapsed: {formatElapsed(elapsedSec)}
+        <Chip tone="accent" dot pulse>
+          Verifying on Creditcoin
+        </Chip>
+        <h1 className="mt-4 text-xl font-semibold tracking-tight2">Importing your history</h1>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-fg-muted">
+          Almost all of this is Ethereum&apos;s own finality, not anything Hana controls.
         </p>
       </div>
-      <ol className="space-y-3 max-w-sm mx-auto">
-        {TIMELINE_STEPS.map((step, i) => (
-          <li
-            key={step.key}
-            className={`flex items-center gap-3 rounded-lg border p-3 ${
-              i <= stepIndex ? "border-indigo-700 bg-indigo-950/30" : "border-slate-800"
-            }`}
-          >
-            <span
-              className={`h-2 w-2 shrink-0 rounded-full ${
-                i < stepIndex ? "bg-emerald-500" : i === stepIndex ? "bg-indigo-400 animate-pulse" : "bg-slate-700"
-              }`}
-            />
-            <span className={i <= stepIndex ? "text-slate-200" : "text-slate-500"}>{step.label}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="text-center text-xs text-slate-600">
-        You can leave this page — your score updates automatically once it's done. Check{" "}
-        <Link href="/" className="underline">
-          your profile
-        </Link>{" "}
-        anytime.
+
+      <Card className="p-6">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-fg-muted">Elapsed</span>
+          <span className="mono text-2xl font-semibold tracking-tight2">{formatElapsed(elapsedSec)}</span>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-grad-accent-r motion-safe:transition-[width] motion-safe:duration-500 motion-safe:ease-out"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-fg-subtle">Typically ~9:20 end to end</p>
+
+        <ol className="mt-6 space-y-1">
+          {TIMELINE_STEPS.map((step, i) => {
+            const done = i < stepIndex;
+            const active = i === stepIndex;
+            return (
+              <li key={step.key} className="flex items-start gap-3 rounded-ctl px-2 py-2.5">
+                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                  {done ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 text-pos" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : active ? (
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inset-0 rounded-full bg-accent motion-safe:animate-ring-out" aria-hidden />
+                      <span className="relative h-2 w-2 rounded-full bg-accent" aria-hidden />
+                    </span>
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-line-strong" aria-hidden />
+                  )}
+                </span>
+                <span
+                  className={
+                    done
+                      ? "text-sm text-fg-muted"
+                      : active
+                        ? "text-sm text-fg motion-safe:animate-breathe"
+                        : "text-sm text-fg-subtle"
+                  }
+                >
+                  {step.label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
+
+      <p className="text-center text-xs text-fg-subtle">
+        Safe to leave this page — the import finishes without you.{" "}
+        <Link href="/" className="text-fg-muted underline underline-offset-2 hover:text-fg">
+          Back to your profile
+        </Link>
       </p>
     </div>
   );

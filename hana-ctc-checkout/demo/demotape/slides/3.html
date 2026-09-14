@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The solution</title>
+<link rel="stylesheet" href="slides.css" />
+</head>
+<body>
+<div class="slide-no anim-fade" style="--d:180ms">3 / 4</div>
+<div class="slide">
+  <span class="eyebrow anim" style="--d:120ms"><span class="dot"></span>The solution</span>
+
+  <h1 class="anim" style="--d:260ms">A proof, <span class="grad">not a promise.</span></h1>
+
+  <p class="lede anim" style="--d:430ms;max-width:820px">
+    Hana imports the record itself and has Creditcoin verify it on-chain — a Merkle inclusion
+    proof plus a continuity proof, checked by the Attestcoin precompile. Nobody vouches for it.
+  </p>
+
+  <!-- The pipeline, drawn left to right in the order it actually executes. -->
+  <div style="margin-top:46px;max-width:1060px">
+    <div style="display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr;align-items:stretch;gap:10px">
+      <div class="card anim" style="--d:640ms">
+        <div class="label">1 &middot; Ethereum Sepolia</div>
+        <div style="font-size:18px;font-weight:500;margin-top:8px">snapshot()</div>
+        <div class="sub">One event summarising the wallet's lending record</div>
+      </div>
+
+      <svg width="44" height="24" viewBox="0 0 44 24" fill="none" aria-hidden="true" style="align-self:center">
+        <path class="anim-draw" style="--len:34;--d:900ms" d="M2 12 H34" stroke="#7C5CFF" stroke-width="2" stroke-linecap="round"/>
+        <path class="anim-draw" style="--len:14;--d:1150ms" d="M28 6 L36 12 L28 18" stroke="#7C5CFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <div class="card card-accent anim" style="--d:820ms">
+        <div class="label">2 &middot; Creditcoin precompile</div>
+        <div style="font-size:18px;font-weight:500;margin-top:8px" class="mono">0x0FD2</div>
+        <div class="sub">Verifies inclusion + header continuity. No oracle in the path.</div>
+      </div>
+
+      <svg width="44" height="24" viewBox="0 0 44 24" fill="none" aria-hidden="true" style="align-self:center">
+        <path class="anim-draw" style="--len:34;--d:1080ms" d="M2 12 H34" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/>
+        <path class="anim-draw" style="--len:14;--d:1330ms" d="M28 6 L36 12 L28 18" stroke="#22D3EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <div class="card anim" style="--d:1000ms">
+        <div class="label">3 &middot; CreditRegistry on CC3</div>
+        <div style="font-size:18px;font-weight:500;margin-top:8px">Score recomputed</div>
+        <div class="sub">Readable by any contract on the chain</div>
+      </div>
+    </div>
+
+    <div class="card card-accent anim" style="--d:1220ms;margin-top:24px;background:var(--surface-2)">
+      <div class="mono" style="font-size:17px;line-height:1.7">
+        <span style="color:var(--fg-subtle)">// the entire integration surface</span><br />
+        <span style="color:var(--accent-hi)">function</span> <span style="color:var(--aqua)">getCreditLimit</span><span style="color:var(--fg-muted)">(address user, address asset) </span><span style="color:var(--accent-hi)">external view returns</span><span style="color:var(--fg-muted)"> (uint256);</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
