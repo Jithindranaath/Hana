@@ -12,63 +12,152 @@ read it from any contract with a single view call.
 [![Source chain](https://img.shields.io/badge/Source-Ethereum_Sepolia-22D3EE?style=flat-square)](https://sepolia.etherscan.io)
 [![Tests](https://img.shields.io/badge/contract_tests-59%2F59-34D399?style=flat-square)](#quick-start)
 [![Verified](https://img.shields.io/badge/contracts-verified_on_both_chains-34D399?style=flat-square)](#live-deployments)
-[![Hackathon](https://img.shields.io/badge/BUIDL_CTC_2026_Fall-DeFi-FBBF24?style=flat-square)](https://dorahacks.io/hackathon/buidl-ctc-2026-fall/detail)
+[![Demo](https://img.shields.io/badge/▶_watch_the_demo-3m41s-FB7185?style=flat-square)](https://youtu.be/cf6tR-WRd1Y?si=dRicQ9lsLKxdft7F)
+
+<br>
+
+<a href="https://youtu.be/cf6tR-WRd1Y?si=dRicQ9lsLKxdft7F">
+  <img src="assets/demo-thumbnail.png" alt="Watch the Hana demo — 3 min 41 s" width="820">
+</a>
+
+**[▶ Watch the full demo on YouTube](https://youtu.be/cf6tR-WRd1Y?si=dRicQ9lsLKxdft7F)** — every contract call in it is a real,
+signed transaction on CC3 Testnet.
 
 </div>
 
 ---
 
-## In 30 seconds
+## The problem
 
-A wallet can build years of perfect repayment on Ethereum, then arrive on any other chain as a
-stranger. Every chain restarts every borrower at zero — which is why on-chain credit is stuck at
-overcollateralisation. If you must post more than you borrow, that isn't credit, it's a deposit.
+A wallet can spend years borrowing and repaying perfectly on Ethereum — a record that is public,
+permanent and independently verifiable. The moment it touches another chain, it is a stranger
+again. Not lower-rated. **Unknown.**
 
-Hana is the missing piece: a **permissionless, EVM-native credit registry** on Creditcoin.
+<p align="center"><img src="assets/screenshots/01-problem.png" alt="The same wallet: 14 loans and 40 on-time payments on Ethereum, versus a score of 300 on Creditcoin" width="820"></p>
+
+That is why on-chain credit is stuck at overcollateralisation. If a borrower must post more than
+they borrow, they have not been given credit — they have made a deposit. And the three obvious
+fixes each fail for a different reason:
+
+| Approach | Why it fails |
+|---|---|
+| Sign a message claiming your history | A signature proves you control a key. It proves nothing about what that key ever did. |
+| Bridge it | A bridge moves assets and asks you to trust a validator committee. Credit is not an asset. |
+| Post it with an oracle | Reintroduces exactly the trusted intermediary the protocol was built to remove. |
+
+Even once the history is portable it needs somewhere to live, and Creditcoin has no
+permissionless, EVM-native place to put it. Credal proves on-chain credit works at scale, but it is
+an institutional API you apply for — not a contract an arbitrary dApp can query.
+
+---
+
+## How it works
+
+Hana does not ask anyone to vouch. It imports the record itself and has Creditcoin verify it
+on-chain.
+
+<p align="center"><img src="assets/screenshots/02-solution.png" alt="The import pipeline: snapshot on Sepolia, verified by the Attestcoin precompile at 0x0FD2, written to CreditRegistry on CC3" width="820"></p>
+
+1. A wallet calls `snapshot()` on `HanaCreditAttestor` (Sepolia) — one event summarising its
+   lending record.
+2. A worker fetches a Merkle inclusion + continuity proof and submits it to `CreditImporterASC`
+   on CC3.
+3. `CreditImporterASC` verifies it against the **real `INativeQueryVerifier` precompile at
+   `0x0FD2`**, decodes the proved transaction's receipt and logs on-chain with `EvmV1Decoder`
+   (the precompile proves inclusion only — it never interprets content), and runs four ordered
+   checks before writing anything: replay key, receipt status, emitter identity, monotonic nonce.
+   **Each has a committed negative test.**
+4. `CreditRegistry` recomputes the composite score — imported history always weighted below native
+   activity — and the limit becomes readable by any contract on the chain.
+
+No oracle signs off. No committee votes. Nothing custodial moves. What crosses is a proved claim
+about past behaviour.
+
+---
+
+## Proof it's real, not a mockup
+
+<p align="center"><img src="assets/screenshots/03-score.png" alt="A real wallet's credit profile: composite score 786, imported from Ethereum" width="820"></p>
+
+| | |
+|---|---|
+| **Imported credit score** | A real wallet moved **300 → 786** from an actual Sepolia history — not a test fixture |
+| **Attestation latency** | **~9 minutes**, measured across **four** independent live round trips: 497s, 532s, 559s, 491s |
+| **Contract tests** | **59/59 passing**, including a negative test for every import check |
+| **Both chains** | Every contract **verified** — source published, not just deployed bytecode |
+
+Three things we found by running against live infrastructure instead of mocks, and fixed:
+
+- **The precompile's ABI was not what the docs implied.** A de-risking spike against the real
+  network caught our `IAttestcoin.sol` interface guess being wrong *on every field* — before a
+  single contract was built on top of it.
+- **A real cross-asset accounting bug.** `CreditRegistry` tracked debt in one shared field, so an
+  18-decimal SPACE draw could silently zero out a wallet's 6-decimal iUSDC credit. Caught by
+  driving both reference apps from one wallet in sequence — something 55 passing tests never did.
+  Fixed with per-asset debt, plus two regression tests that close exactly that gap.
+- **USC v2's sub-15-second claim does not hold on CC3 Testnet.** We publish the full measured
+  breakdown rather than the headline, and the product is built around the number we actually
+  observed.
+
+The worker was also killed mid-attestation and resumed correctly without double-submitting, and
+the lender interface paid real, measured yield: 3,000 iUSDC deposited, redeemed for
+**3,000.000047 iUSDC** after a real borrower's interest accrued.
+
+---
+
+## Two reference applications. One registry. Zero coupling.
+
+A registry only its own app reads is plumbing. So Hana ships two, deliberately different in shape,
+drawing on the **same** imported score.
+
+<p align="center"><img src="assets/screenshots/04-two-products.png" alt="One score unlocking both an iUSDC BNPL limit and a SPACE credit line" width="820"></p>
+
+### #1 — Retail Buy Now, Pay Later
+
+A shopper splits a real purchase into instalments, funded by an ERC-4626 `LendingPool` that real
+depositors earn yield from, and disbursed through a `SettlementVault`. Liquidation of non-`iUSDC`
+collateral routes through a PenguinSwap-shaped router — the mainnet address drops in with one
+owner call, no redeployment.
+
+<p align="center"><img src="assets/screenshots/05-store.png" alt="The demo storefront, checking out with Hana" width="820"></p>
+
+<p align="center">
+  <img src="assets/screenshots/06-plan.png" alt="Choosing a 4-instalment plan, underwritten against the imported limit" width="410">
+  <img src="assets/screenshots/07-dashboard.png" alt="The live loan: four instalments, first payment due" width="410">
+</p>
+
+### #2 — DePIN node-operator credit line
+
+An operator draws `$SPACE` against the same score, it is auto-staked in the same transaction —
+they never custody the principal — and the debt is repaid from staking yield instead of their own
+capital.
+
+<p align="center"><img src="assets/screenshots/08-credit-line.png" alt="A live SPACE credit line repaying itself from staking yield" width="820"></p>
+
+This is the **SpaceRouter Credit Line** from Creditcoin's own published roadmap, marked not yet
+live. It needs underwriting, underwriting needs a score, and a permissionless score is exactly
+what did not exist. Hana ships that layer ahead of the product that will need it.
+
+Both apps are just entries in `CreditRegistry.authorizedReporters` calling the same two functions.
+
+---
+
+## Build on Hana
+
+<p align="center"><img src="assets/screenshots/09-integrate.png" alt="The public integration interface" width="820"></p>
 
 ```solidity
 // any Creditcoin contract — no partnership, no permission, no oracle subscription
 interface ICreditRegistry {
     function getCreditLimit(address user, address asset) external view returns (uint256);
+    function getAvailableCredit(address user, address asset) external view returns (uint256);
 }
+
+uint256 limit = ICreditRegistry(CREDIT_REGISTRY).getCreditLimit(borrower, asset);
 ```
 
-Two reference applications prove it's a primitive rather than an app, drawing on the **same**
-imported score with zero coupling between them:
-
-| | Reference app #1 | Reference app #2 |
-|---|---|---|
-| **What** | Retail Buy Now, Pay Later | DePIN node-operator credit line |
-| **Asset** | `iUSDC` | `$SPACE` |
-| **Funded by** | ERC-4626 `LendingPool`, settled through a vault | Drawn and auto-staked in one transaction |
-| **Repaid from** | The borrower, in instalments | Staking yield, not the operator's capital |
-
-The second one is the **SpaceRouter Credit Line** from Creditcoin's published roadmap. It needs
-underwriting, underwriting needs a score, and a permissionless score is what did not exist.
-
----
-
-## Status
-
-Phases are `WORKFLOW.md`'s own numbering. "Verified live" means driven against the real deployed
-contracts on real Sepolia + CC3 testnets — not a local chain, not a mock.
-
-| Phase | What | Status |
-|---|---|---|
-| 0 | Foundations (monorepo, tooling, chain facts confirmed) | Done |
-| 1 | Attestcoin spike — de-risk the precompile before building on it | Done |
-| 2 | `HanaCreditAttestor` (Sepolia) | Deployed, verified, fixtures seeded |
-| 3 | Core protocol (`CreditRegistry`, `LendingPool`, `LoanManager`, `SettlementVault`, `iUSDC`) | Deployed + verified, smoke passing |
-| 4 | `CreditImporterASC` + wiring | Deployed, wired, real import proven end to end |
-| 5 | Worker (event → attest → proof → submit) | Built, hardened, proven live |
-| 6 | Merchant API + portal | Built and tested |
-| 7 | Checkout Hub (wallet, score, onboarding, loans, repayment) | Verified live |
-| 8 | Demo store + lender interface | Verified live |
-| 9 | Docs site, demo video, submission | Docs live; video recorded; submission drafted |
-
-Every "done" has a corresponding real transaction hash or passing test run. Where something is
-implemented but **not** verified live, it's called out in [Known gaps](#known-gaps) rather than
-left ambiguous.
+Reading costs nothing and requires no permission. Debt is tracked per asset, so activity in one
+consumer application never suppresses another's limit. A third contract is the same three lines.
 
 ---
 
@@ -108,6 +197,22 @@ All six contracts are verified (source published, not just deployed). These are 
 source of truth consumed by every package — see `packages/shared/src/generated/`; nothing hand-copies
 an address.
 
+---
+
+## Chain facts
+
+Confirmed live during the Phase 1 spike — not assumptions.
+
+| | |
+|---|---|
+| Protocol chain | Creditcoin CC3 Testnet (EVM L1), chainId `102031` — RPC `https://rpc.cc3-testnet.creditcoin.network` |
+| Source chain | Ethereum Sepolia, chainId `11155111` — `chainKey` **1** as seen by the CC3 USC runtime |
+| Attestcoin verifier precompile | `0x0000000000000000000000000000000000000FD2` (proves Merkle inclusion + continuity only — does not decode the transaction) |
+| Chain Info precompile | `0x0000000000000000000000000000000000000fd3` (a *different* precompile — `getSupportedChains()` lives here) |
+| Prover | `https://prover.cc3-testnet.creditcoin.network` |
+| Measured attestation latency | ~9 minutes, emit → confirmed import (**four** independent live measurements: 497s, 532s, 559s, 491s) |
+| SDK | `@gluwa/usc-sdk` (peer dep: ethers v6) for off-chain proof fetching; `@gluwa/asc-contracts`'s `EvmV1Decoder` on-chain for decoding a proved transaction's receipt/logs |
+| Primary asset | `iUSDC` (mock ERC20, 6 decimals, faucet-mintable) |
 
 ---
 
@@ -148,36 +253,7 @@ Vercel settings that matter for all four:
 
 Deploy in the order above: docs has no dependencies, the merchant must exist before the store and
 checkout can be pointed at it.
-
 ---
-
-## What's proven, not just built
-
-- **Phase 1**: Two independent live proof round-trips (the reference `hello-bridge` tutorial, and a
-  from-scratch `Ping`/`PingImporter` pair matching `CreditImporterASC`'s exact shape) confirmed the
-  real precompile ABI, the real chain facts, and measured attestation latency at **~9 minutes**
-  (`planning/attestation-latency.md`). This caught the original `IAttestcoin.sol` guess being wrong
-  on every field before any real contract was built against it.
-- **Phase 4**: A real Sepolia `snapshot()` was imported through the live `CreditImporterASC` — a
-  wallet's on-chain composite score moved **300 → 786** from real imported history, not a test
-  fixture (`planning/demo-fixtures.md`).
-- **Phase 5**: The worker was killed mid-attestation-wait and resumed correctly without double-submitting;
-  separately, two real transient network failures (a prover timeout, a DNS blip) were caught live
-  and led to real retry-hardening, not hypothetical.
-- **Phase 7**: The entire user journey — connect wallet → see real score → link Ethereum history →
-  watch it import live → pay a bill via a real 4-installment loan → pay it off from the dashboard
-  → watch the score change — was driven end to end in a real browser against the live contracts.
-  Along the way this surfaced and fixed four real integration bugs (a broken RainbowKit
-  dependency, a wallet connector that only works with a real browser extension, missing CORS on
-  a cross-origin API call, and an unreadable error from a cross-contract revert) — see
-  `hana-ctc-checkout/README.md`'s design notes for the specifics.
-- **Phase 8**: A real storefront purchase was driven end to end — add to cart → server-side
-  checkout (price recomputed server-side, never trusted from the client) → redirect to the
-  Checkout Hub → real origination → `SettlementVault` confirmed to hold the funds. Separately, the
-  lender interface was proven to pay real yield: deposited 3,000 iUSDC, let a real borrower's
-  interest accrue for 5 minutes, and redeemed for **3,000.000047 iUSDC** — more than deposited, not
-  a rounding artifact (a smaller first attempt *did* round down, which is expected ERC4626
-  behavior at that scale, not a bug — see `hana-ctc-checkout/README.md`).
 
 ## Monorepo layout
 
@@ -191,11 +267,11 @@ checkout can be pointed at it.
 | [`hana-ctc-store/`](./hana-ctc-store) | `@hana/store` | Demo storefront ("Pay with Hana") | Built + proven live |
 | [`hana-ctc-docs/`](./hana-ctc-docs) | `@hana/docs` | Protocol docs + Attestcoin write-up | Built + proven live |
 | [`packages/shared/`](./packages/shared) | `@hana/shared` | Chain config, generated ABIs + address book, shared types | Live |
-| [`planning/`](./planning) | — | Spec, architecture, product plan, attestation-latency + demo-fixtures logs | — |
 
-**Build order and acceptance checks: [`WORKFLOW.md`](./WORKFLOW.md).** Each package's own
-`README.md` has a "design notes" section documenting non-obvious decisions and real bugs found
-while building it — worth reading before touching that package's code.
+Each package's own `README.md` has a "design notes" section documenting the non-obvious decisions
+and the real bugs found while building it.
+
+---
 
 ## Quick start
 
@@ -224,82 +300,3 @@ pnpm docs:dev                    # http://localhost:3004 — architecture, Attes
 Each package's own `README.md` has the full environment variable list and exact commands
 (`pnpm typecheck`, `pnpm build`, package-specific scripts).
 
-## Chain facts
-
-Confirmed live during the Phase 1 spike — not assumptions.
-
-| | |
-|---|---|
-| Protocol chain | Creditcoin CC3 Testnet (EVM L1), chainId `102031` — RPC `https://rpc.cc3-testnet.creditcoin.network` |
-| Source chain | Ethereum Sepolia, chainId `11155111` — `chainKey` **1** as seen by the CC3 USC runtime |
-| Attestcoin verifier precompile | `0x0000000000000000000000000000000000000FD2` (proves Merkle inclusion + continuity only — does not decode the transaction) |
-| Chain Info precompile | `0x0000000000000000000000000000000000000fd3` (a *different* precompile — `getSupportedChains()` lives here) |
-| Prover | `https://prover.cc3-testnet.creditcoin.network` |
-| Measured attestation latency | ~9 minutes, emit → confirmed import (**four** independent live measurements: 497s, 532s, 559s, 491s) |
-| SDK | `@gluwa/usc-sdk` (peer dep: ethers v6) for off-chain proof fetching; `@gluwa/asc-contracts`'s `EvmV1Decoder` on-chain for decoding a proved transaction's receipt/logs |
-| Primary asset | `iUSDC` (mock ERC20, 6 decimals, faucet-mintable) |
-
-## Architecture notes worth knowing
-
-- **The precompile only proves inclusion — it never decodes anything.** `verifyAndEmit`/`verify`
-  return a plain `bool`. Receipt status and event logs come from decoding `encodedTransaction`
-  client-side via `EvmV1Decoder`. This was the single biggest wrong assumption in the original
-  plan (`IAttestcoin.sol` originally guessed a struct return with `receiptStatus` baked in) —
-  caught in the Phase 1 spike before `CreditImporterASC` was built against the wrong shape.
-- **`CreditRegistry` has exactly two write paths**: `recordNativeActivity` (`onlyReporter`, gated by an
-  owner-managed `authorizedReporters` allowlist so more than one consumer application — `LoanManager`,
-  and later `SpaceCreditLine` — can report native activity through the same interface) and
-  `importAttestedHistory` (`onlyImporterASC`). The LP-deposit score bonus is pull-based (reads
-  `lendingPool.maxWithdraw`), not a third writer.
-- **Imported history is always weighted below native** (`importWeightBps`, default 60%) — you
-  can't out-score a local borrower purely by importing history elsewhere.
-- **Money is on-chain; the Merchant API only stores metadata**, joined by `billHash`. The
-  Merchant API and Checkout Hub are different origins/services on purpose (a merchant's API
-  credentials never reach the browser-facing checkout) — see `hana-ctc-checkout/README.md`'s
-  notes on the internal-token proxy route and CORS.
-- **The worker is designed to survive restarts and network blips, not just the happy path**: job
-  state is a crash-safe JSON file keyed by the same replay key the contract computes on-chain, and
-  every network-dependent step retries with backoff plus a periodic sweep for anything that still
-  ends up failed. This was hardened against real failures hit during testing, not written
-  speculatively.
-- **The checkout onboarding screen survives a page refresh** by checking the worker's
-  `/status/:address` on mount rather than trusting React state — confirmed live (reloaded a
-  browser mid-import in a fresh context and it resumed with the correct elapsed time).
-- **A small LP stake in a large pool can see yield rounded away to zero.** `LendingPool` is a
-  standard OZ ERC4626 vault, which always rounds in the vault's favor (anti-inflation-attack
-  protection) — a depositor whose pool share times the interest earned doesn't clear a whole base
-  unit gets nothing that cycle, or even one unit less than deposited. Confirmed live at both ends:
-  a 200 iUSDC stake against one small loan's interest rounded down; a 3,000 iUSDC stake against a
-  larger loan's interest over a longer window rounded up to a clean, unambiguous gain. Not a bug —
-  size any yield test or demo accordingly.
-- **Phase 9.1**: the docs site (`@hana/docs`) renders five pages, each driven in a real browser
-  (Playwright) against the running dev server — including the addresses page, confirmed to pull
-  the live `CreditRegistry` and `HanaCreditAttestor` addresses from `@hana/shared`, not
-  hand-typed copies — with zero console errors.
-
-## Known gaps
-
-- **Phase 9.2/9.3** (demo video, DoraHacks submission) are drafts only —
-  [`planning/demo-video-script.md`](./planning/demo-video-script.md) (full shot list, real tx
-  hashes/addresses, timing) and
-  [`planning/dorahacks-submission-draft.md`](./planning/dorahacks-submission-draft.md) (BUIDL page
-  text, pre-submit checklist) are ready to act on, but recording the video and submitting to
-  DoraHacks are actions only you can perform (they need your own recording setup and DoraHacks
-  account/team/logo). Everything else in `WORKFLOW.md` is done.
-- **Late-payment penalty is implemented and unit-tested, but not verified live.** Watching a real
-  loan actually go overdue needs a real due date to pass on a live testnet — not something a
-  session can fast-forward. The contract logic (`LoanManager`'s late fee + `PAYMENT_LATE` scoring)
-  has committed unit tests; the checkout dashboard's "Overdue" badge is implemented against the
-  same `nextDueDate + gracePeriod` read the contract uses. Nobody has watched both happen together
-  on a live loan yet.
-- **`REVOLVING` loans** (`draw`/open credit lines) aren't wired into the checkout's origination
-  flow yet — it currently offers `INSTALLMENT` (4/6), `TERM`, and an `OVERCOLLATERALIZED` fallback.
-- **`pnpm contracts:test` / `pnpm attestor:test` can rarely crash on exit on Windows** with an
-  `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` line — a libuv/native-addon (`keccak`,
-  `secp256k1`) teardown race on a Node version newer than Hardhat 2.x's binaries were built against
-  (hit once on Node v24.12.0; reproduced 0/5 on immediate reruns). Harmless — check for the passing
-  count printed just above it. Details and workarounds in `hana-ctc-attestor/README.md`.
-
-## Hackathon
-
-BUIDL CTC 2026 Fall (DoraHacks) — Track: DeFi. Submission deadline Sep 13, 2026, 23:59 ET.
