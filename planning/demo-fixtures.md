@@ -16,20 +16,26 @@ wallet so each could sign its own `snapshot()`.
 
 | | |
 |---|---|
-| Address | `0xcCc73697133b73d6Fc76d264DF9298d2D7176927` |
+| Address | `0x77D2A5BB67fC0875fe9FBfDA175BF1A828b7982b` |
 | Seeded fields | 14 loans completed, 40 on-time payments, 1 late, 0 defaults, 85,000 (1e18 units) cumulative borrowed, first activity 720 days ago |
-| `snapshot()` tx | `0xe2f97fe35ad1bd172b8d354504da73c57139410966f39fe8ad9cd2bb2ebdba4f` |
-| Block | 11640011 |
+| `snapshot()` tx | `0x2a00afa2aa98fc9e8adf710cb699c2f5514226a84984098134ef36e1ec75be4d` |
+| Block | 11699147 |
 | `snapshotNonce` | 1 |
+
+> **Re-generated 2026-09-14.** The original demo wallets (`0xcCc736…6927` / `0x9280B7…97fd`) were
+> lost with `.demo-wallets.json`, which is gitignored and existed only on one machine — their
+> imported scores are still live on `CreditRegistry`, but nothing can sign as them any more.
+> `pnpm attestor:seed:sepolia` generated and seeded these replacements, funding their Sepolia gas
+> from the deployer rather than a faucet (the script now does this automatically).
 
 ## "Thin" history
 
 | | |
 |---|---|
-| Address | `0x9280B71dD507E4c2d1297c9b40991789914d97fd` |
+| Address | `0x3C6DeAA5774ffcd8502E1D801E75B8BadD448530` |
 | Seeded fields | 1 loan completed, 2 on-time payments, 0 late, 0 defaults, 500 (1e18 units) cumulative borrowed, first activity 30 days ago |
-| `snapshot()` tx | `0xdd30e57e188c144d5c08e7887c32205c8fa7962d376e97274b558d471cc3a3f9` |
-| Block | 11640012 |
+| `snapshot()` tx | `0xf3cc2db4e40cf5f1f3a3c54afa347ce96250fa5aa2bbb383e2f63d7fec532978` |
+| Block | 11699149 |
 | `snapshotNonce` | 1 |
 
 ## Confirmed: real end-to-end import against the live CC3 deployment

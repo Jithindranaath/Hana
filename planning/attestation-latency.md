@@ -97,6 +97,19 @@ conclusion that isn't in doubt. `pnpm --filter @hana/worker summarize-latency` c
 p50/p95 from `.worker-state/latency-log.jsonl` whenever more runs are collected — the tooling is
 in place; running nine more before the answer changes just wasn't a good use of that time.
 
+## Fourth measurement — 2026-09-14 (fresh demo wallets)
+
+Regenerating the demo wallets produced another unplanned real measurement, against the same live
+infrastructure and the current deployment:
+
+| Subject | Total | Attest | Proof fetch | Submit |
+|---|---|---|---|---|
+| `0x77D2A5BB…982b` (excellent) | **491.0s** | 483.4s | 0.3s | 7.4s |
+
+Four independent runs now: 497s, 532s, 558.7s, 491.0s — a 67-second band, all ~8-9 minutes, still
+two orders of magnitude off the <30s threshold that would justify a synchronous import path. The
+conclusion below is unchanged and is now the better-evidenced for it.
+
 ## Decision: the async worker stays as built
 
 USC v2's sub-15-second latency does not hold on CC3 Testnet as of this measurement. `CreditImporterASC`

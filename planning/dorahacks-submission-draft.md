@@ -32,6 +32,69 @@ applications prove it's reusable rather than app-specific: a working Buy Now, Pa
 and a DePIN node-operator credit line — the underwriting layer for the SpaceRouter Credit Line
 already on Creditcoin's own published roadmap.
 
+## Vision / The problem we solve
+
+**A wallet's credit history does not travel.**
+
+Someone can spend two years borrowing and repaying perfectly on Ethereum, build a record that is
+public, permanent and independently verifiable — and the moment they touch another chain, they are
+a stranger again. Not "lower rated". Unknown. Every chain restarts every borrower at zero, and the
+record that should follow them sits one chain away, provable to nobody.
+
+The consequence is that on-chain credit stays stuck at overcollateralisation. If you can only lend
+to a wallet that already posted more value than it is borrowing, you have not extended credit — you
+have taken a deposit. That excludes precisely the people credit exists to serve, and it is why
+undercollateralised lending has never worked on a chain where nobody can tell who they are lending
+to.
+
+**Why this is still unsolved.** The three obvious answers each fail for a different reason:
+
+- **Sign a message claiming your history.** A signature proves you control a key. It proves nothing
+  about what that key ever did.
+- **Bridge it.** A bridge moves assets and asks you to trust a validator committee. Credit is not an
+  asset, and a reputation secured by a committee is only as good as the committee.
+- **Post it with an oracle.** That reintroduces exactly the trusted intermediary the protocol was
+  built to remove — now with a subscription.
+
+And even once the history is portable, it needs somewhere to live. Creditcoin has nine years of
+proof that on-chain credit works at scale through Credal, but Credal is institutional and
+permissioned — an API you apply for, not a contract an arbitrary dApp can query. There is no
+permissionless, EVM-native place on Creditcoin to *put the answer*.
+
+**What Hana does.** `CreditRegistry` is that missing place. A wallet's lending record is imported
+from another chain and verified on-chain by Creditcoin's Attestcoin precompile — a Merkle inclusion
+proof plus a continuity proof, checked in the contract. No oracle signs off, no committee votes,
+nothing custodial moves. What crosses is not value; it is a proved claim about past behaviour.
+
+The registry then exposes one public view call:
+
+```solidity
+function getCreditLimit(address user, address asset) external view returns (uint256);
+```
+
+Any contract on Creditcoin can read it. No partnership, no permission, no subscription.
+
+**Why it is a primitive, not an app.** A registry that only its own app reads is plumbing. So Hana
+ships two reference applications that are deliberately different shapes of credit, drawing on the
+same imported score with zero coupling between them: a retail buy-now-pay-later checkout settling in
+iUSDC, and a DePIN node-operator credit line in $SPACE that auto-stakes the draw and repays itself
+out of staking yield instead of the operator's capital. Both are simply entries in the registry's
+authorized-reporter list calling the same two functions. A third contract is the same three lines of
+code.
+
+That second application is not hypothetical: the **SpaceRouter Credit Line** appears on Creditcoin's
+own published Credal roadmap, marked not yet live. It needs underwriting, underwriting needs a
+score, and a permissionless score is what did not exist. Hana ships that layer ahead of the product
+that will need it.
+
+**The longer vision.** Credit should be a public good rather than a moat. A repayment record is the
+most valuable thing an ordinary borrower owns and the one thing they can never take with them. Hana
+treats portable reputation as infrastructure: every additional source chain compounds the same
+credit graph, every new consumer contract underwrites against it without asking anyone's permission,
+and a borrower's history finally belongs to the borrower.
+
+---
+
 ## Full description
 
 **The problem.** A wallet's credit history is trapped on the chain it was built on. A borrower

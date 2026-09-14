@@ -1,40 +1,76 @@
-# Hana Network — Cross-Chain Credit Layer on Creditcoin
+<div align="center">
 
-Hana lets a wallet **prove its lending/repayment history from another chain** — via the
-**Attestcoin Protocol**, verified synchronously by the precompile at `0x0FD2` with a Merkle
-inclusion proof plus a continuity proof — and **borrow against that imported credit on
-Creditcoin (CC3 Testnet)**. A Buy Now, Pay Later checkout ships as the reference application.
+# Hana Network
 
-`CreditRegistry` is a public primitive: any Creditcoin contract can call
-`getCreditLimit(address, asset)` and underwrite against an attested, multi-chain credit
-profile — no oracle, no bridge, no permission.
+### Credit history that travels with the borrower.
 
-**Built for BUIDL CTC 2026 Fall** (DoraHacks, DeFi track). If you're new to this repo, this file is
-meant to be enough on its own — what the project is, what actually works today (verified live, not
-just written), what's left, and how to run it. Deep-dives live in each package's own `README.md`;
-the full phase-by-phase build plan with acceptance checks is `WORKFLOW.md`.
+**A cross-chain credit primitive on Creditcoin.** Import a wallet's lending record from another
+chain — verified on-chain by a Merkle inclusion proof plus a continuity proof, not an oracle — and
+read it from any contract with a single view call.
+
+[![Chain](https://img.shields.io/badge/Creditcoin-CC3_Testnet-7C5CFF?style=flat-square)](https://creditcoin-testnet.blockscout.com)
+[![Source chain](https://img.shields.io/badge/Source-Ethereum_Sepolia-22D3EE?style=flat-square)](https://sepolia.etherscan.io)
+[![Tests](https://img.shields.io/badge/contract_tests-59%2F59-34D399?style=flat-square)](#quick-start)
+[![Verified](https://img.shields.io/badge/contracts-verified_on_both_chains-34D399?style=flat-square)](#live-deployments)
+[![Hackathon](https://img.shields.io/badge/BUIDL_CTC_2026_Fall-DeFi-FBBF24?style=flat-square)](https://dorahacks.io/hackathon/buidl-ctc-2026-fall/detail)
+
+</div>
+
+---
+
+## In 30 seconds
+
+A wallet can build years of perfect repayment on Ethereum, then arrive on any other chain as a
+stranger. Every chain restarts every borrower at zero — which is why on-chain credit is stuck at
+overcollateralisation. If you must post more than you borrow, that isn't credit, it's a deposit.
+
+Hana is the missing piece: a **permissionless, EVM-native credit registry** on Creditcoin.
+
+```solidity
+// any Creditcoin contract — no partnership, no permission, no oracle subscription
+interface ICreditRegistry {
+    function getCreditLimit(address user, address asset) external view returns (uint256);
+}
+```
+
+Two reference applications prove it's a primitive rather than an app, drawing on the **same**
+imported score with zero coupling between them:
+
+| | Reference app #1 | Reference app #2 |
+|---|---|---|
+| **What** | Retail Buy Now, Pay Later | DePIN node-operator credit line |
+| **Asset** | `iUSDC` | `$SPACE` |
+| **Funded by** | ERC-4626 `LendingPool`, settled through a vault | Drawn and auto-staked in one transaction |
+| **Repaid from** | The borrower, in instalments | Staking yield, not the operator's capital |
+
+The second one is the **SpaceRouter Credit Line** from Creditcoin's published roadmap. It needs
+underwriting, underwriting needs a score, and a permissionless score is what did not exist.
+
+---
 
 ## Status
 
 Phases are `WORKFLOW.md`'s own numbering. "Verified live" means driven against the real deployed
-contracts on real Sepolia + CC3 testnets in this session — not a local chain, not a mock.
+contracts on real Sepolia + CC3 testnets — not a local chain, not a mock.
 
 | Phase | What | Status |
 |---|---|---|
-| 0 | Foundations (monorepo, tooling, chain facts confirmed) | ✅ Done |
-| 1 | Attestcoin spike — de-risk the precompile before building on it | ✅ Done — see "What the spike found" below |
-| 2 | `HanaCreditAttestor` (Sepolia) | ✅ Deployed, verified, demo fixtures seeded |
-| 3 | Core protocol (`CreditRegistry`, `LendingPool`, `LoanManager`, `SettlementVault`, `iUSDC`) | ✅ Deployed + verified on CC3, smoke test passing |
-| 4 | `CreditImporterASC` + wiring | ✅ Deployed, wired, a real cross-chain import proven end to end |
-| 5 | Worker (event → attest → proof → submit) | ✅ Built, hardened, proven live (cold start, kill/resume, retry-on-failure) |
-| 6 | Merchant API + portal | ✅ Built and tested (API + browser-driven UI) |
-| 7 | Checkout Hub (wallet, score, onboarding, loans, repayment) | ✅ All 5 sub-phases verified live — see below |
-| 8 | Demo store + lender interface | ✅ Both sub-phases verified live — see below |
-| 9 | Docs site, demo video, submission | 🔶 9.1 done (docs site built + verified live); 9.2/9.3 drafted, awaiting recording + submission — see below |
+| 0 | Foundations (monorepo, tooling, chain facts confirmed) | Done |
+| 1 | Attestcoin spike — de-risk the precompile before building on it | Done |
+| 2 | `HanaCreditAttestor` (Sepolia) | Deployed, verified, fixtures seeded |
+| 3 | Core protocol (`CreditRegistry`, `LendingPool`, `LoanManager`, `SettlementVault`, `iUSDC`) | Deployed + verified, smoke passing |
+| 4 | `CreditImporterASC` + wiring | Deployed, wired, real import proven end to end |
+| 5 | Worker (event → attest → proof → submit) | Built, hardened, proven live |
+| 6 | Merchant API + portal | Built and tested |
+| 7 | Checkout Hub (wallet, score, onboarding, loans, repayment) | Verified live |
+| 8 | Demo store + lender interface | Verified live |
+| 9 | Docs site, demo video, submission | Docs live; video recorded; submission drafted |
 
-Nothing above is aspirational — every ✅ has a corresponding real transaction hash or passing test
-run. Where something is implemented but *not* verified live, it's called out explicitly (see
-"Known gaps" below) rather than left ambiguous.
+Every "done" has a corresponding real transaction hash or passing test run. Where something is
+implemented but **not** verified live, it's called out in [Known gaps](#known-gaps) rather than
+left ambiguous.
+
+---
 
 ## Live deployments
 
@@ -71,6 +107,49 @@ deployed.)_
 All six contracts are verified (source published, not just deployed). These are also the single
 source of truth consumed by every package — see `packages/shared/src/generated/`; nothing hand-copies
 an address.
+
+
+---
+
+## Deploying (Vercel)
+
+Four of the packages are Next.js apps and deploy cleanly to Vercel. **One Vercel project per app**,
+each with its own **Root Directory** — this is a pnpm workspace, so do not point a project at the
+repo root.
+
+| Order | Vercel Root Directory | What it is | Environment needed |
+|---|---|---|---|
+| 1 | `hana-ctc-docs` | Protocol docs, Attestcoin write-up, live address book | **None** |
+| 2 | `hana-ctc-merchant` | Merchant portal + bill API | `MONGODB_URI`, `MERCHANT_INTERNAL_TOKEN`, `CHECKOUT_BASE_URL`, `CC3_RPC_URL`, `SETTLEMENT_VAULT_DEPLOY_BLOCK` |
+| 3 | `hana-ctc-checkout` | Checkout Hub — score, onboarding, loans, credit line | `NEXT_PUBLIC_CC3_RPC_URL`, `NEXT_PUBLIC_CC3_CHAIN_ID`, `NEXT_PUBLIC_SEPOLIA_RPC_URL`, `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`, `NEXT_PUBLIC_WORKER_STATUS_URL`, `NEXT_PUBLIC_MERCHANT_API_URL`, `MERCHANT_INTERNAL_TOKEN` |
+| 4 | `hana-ctc-store` | Demo storefront | `MERCHANT_API_URL`, `MERCHANT_CLIENT_ID`, `MERCHANT_CLIENT_SECRET` |
+
+Vercel settings that matter for all four:
+
+- **Framework preset** Next.js, **Install Command** `pnpm install` (run from the repo root so the
+  workspace resolves), **Build Command** `pnpm build`.
+- Enable **"Include source files outside of the Root Directory"** — every app imports
+  `@hana/shared` for the generated address book and ABIs.
+
+### Three things that will bite you
+
+1. **`hana-ctc-worker` cannot go on Vercel.** It's a long-running listener that polls for
+   attestation and keeps crash-safe job state on disk. Serverless functions are neither
+   long-running nor persistent. Host it on Railway, Render or Fly, then point
+   `NEXT_PUBLIC_WORKER_STATUS_URL` at that public HTTPS URL. Without it, the checkout's
+   "Link Ethereum history" flow has nothing to poll.
+2. **The merchant needs a real MongoDB.** The local `db:memory` helper is an in-process server —
+   fine for a laptop, meaningless on Vercel. Use MongoDB Atlas (the free tier is enough) and put
+   its connection string in `MONGODB_URI`.
+3. **Get a real WalletConnect project ID.** The placeholder returns `403` from
+   `cloud.reown.com` and RainbowKit's wallet list degrades. It's free at
+   [cloud.reown.com](https://cloud.reown.com), and the deployed origin must be added to its
+   allowlist.
+
+Deploy in the order above: docs has no dependencies, the merchant must exist before the store and
+checkout can be pointed at it.
+
+---
 
 ## What's proven, not just built
 
@@ -156,7 +235,7 @@ Confirmed live during the Phase 1 spike — not assumptions.
 | Attestcoin verifier precompile | `0x0000000000000000000000000000000000000FD2` (proves Merkle inclusion + continuity only — does not decode the transaction) |
 | Chain Info precompile | `0x0000000000000000000000000000000000000fd3` (a *different* precompile — `getSupportedChains()` lives here) |
 | Prover | `https://prover.cc3-testnet.creditcoin.network` |
-| Measured attestation latency | ~9 minutes, emit → confirmed import (two independent live measurements) |
+| Measured attestation latency | ~9 minutes, emit → confirmed import (**four** independent live measurements: 497s, 532s, 559s, 491s) |
 | SDK | `@gluwa/usc-sdk` (peer dep: ethers v6) for off-chain proof fetching; `@gluwa/asc-contracts`'s `EvmV1Decoder` on-chain for decoding a proved transaction's receipt/logs |
 | Primary asset | `iUSDC` (mock ERC20, 6 decimals, faucet-mintable) |
 
